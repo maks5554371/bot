@@ -1,0 +1,57 @@
+name: quest
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: quest-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - quest-net
+
+  backend:
+    build: ./backend
+    container_name: quest-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file: .env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/quest
+    depends_on:
+      - mongo
+    networks:
+      - quest-net
+
+  bot:
+    build: ./bot
+    container_name: quest-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - BACKEND_URL=http://backend:3001
+    depends_on:
+      - backend
+    networks:
+      - quest-net
+
+  frontend:
+    build: ./frontend
+    container_name: quest-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - quest-net
+
+volumes:
+  mongo_data:
+
+networks:
+  quest-net:
+    driver: bridge
