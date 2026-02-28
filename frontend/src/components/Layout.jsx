@@ -12,6 +12,9 @@ const navItems = [
   { to: '/quest', label: '🗺️ Квест' },
   { to: '/photos', label: '📸 Фото' },
   { to: '/map', label: '📍 Карта' },
+  { to: '/playlist', label: '🎵 Плейлист' },
+  { to: '/voting', label: '🗳 Голосования' },
+  { to: '/leaderboard', label: '🏆 Лидерборд' },
 ];
 
 export default function Layout() {
@@ -50,11 +53,38 @@ export default function Layout() {
       });
     });
 
+    socket.on('new_song', (data) => {
+      addNotification({
+        title: '🎵 Новая песня',
+        message: `${data.user?.first_name || 'Участник'} добавил «${data.song?.name || ''}»`,
+        type: 'info',
+      });
+    });
+
+    socket.on('voting_started', (voting) => {
+      addNotification({
+        title: '🗳 Голосование запущено',
+        message: voting.title,
+        type: 'info',
+      });
+    });
+
+    socket.on('voting_finished', (data) => {
+      addNotification({
+        title: '📊 Голосование завершено',
+        message: data.voting?.title || '',
+        type: 'info',
+      });
+    });
+
     return () => {
       socket.off('new_user');
       socket.off('new_photo');
       socket.off('location_update');
       socket.off('new_message');
+      socket.off('new_song');
+      socket.off('voting_started');
+      socket.off('voting_finished');
       socket.disconnect();
     };
   }, []);

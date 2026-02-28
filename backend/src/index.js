@@ -20,6 +20,8 @@ const messageRoutes = require('./routes/messages');
 const botRoutes = require('./routes/bot');
 const dashboardRoutes = require('./routes/dashboard');
 const clueRoutes = require('./routes/clues');
+const songRoutes = require('./routes/songs');
+const votingRoutes = require('./routes/voting');
 
 const app = express();
 const server = http.createServer(app);
@@ -65,6 +67,8 @@ app.use('/api/photos', authMiddleware, photoRoutes);
 app.use('/api/messages', authMiddleware, messageRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 app.use('/api/clues', authMiddleware, clueRoutes);
+app.use('/api/songs', authMiddleware, songRoutes);
+app.use('/api/voting', authMiddleware, votingRoutes);
 
 // Connect to MongoDB and start server
 mongoose

@@ -11,6 +11,9 @@ import QuestPage from './pages/QuestPage';
 import PhotosPage from './pages/PhotosPage';
 import MapPage from './pages/MapPage';
 import ChatPage from './pages/ChatPage';
+import PlaylistPage from './pages/PlaylistPage';
+import VotingPage from './pages/VotingPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 
 export default function App() {
   const checkAuth = useAuthStore((s) => s.checkAuth);
@@ -36,6 +39,9 @@ export default function App() {
         <Route path="/photos" element={<PhotosPage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/chat/:userId" element={<ChatPage />} />
+        <Route path="/playlist" element={<PlaylistPage />} />
+        <Route path="/voting" element={<VotingPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
       </Route>
     </Routes>
   );

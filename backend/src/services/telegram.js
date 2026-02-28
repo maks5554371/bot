@@ -60,4 +60,47 @@ async function getFileUrl(fileId) {
   }
 }
 
-module.exports = { sendMessage, sendPhoto, sendLocation, getFileUrl };
+async function sendVotingNotification(chatId, voting) {
+  const text =
+    `🗳 <b>Голосование началось!</b>\n\n` +
+    `<b>${voting.title}</b>\n\n` +
+    `Голосуй за лучшего и худшего игрока!\n` +
+    `Нажми кнопку «🗳 Голосовать» в меню.`;
+  try {
+    return await sendMessage(chatId, text);
+  } catch (e) {
+    // Ignore blocked users
+  }
+}
+
+async function sendVotingResults(chatId, voting, results) {
+  let text = `📊 <b>Результаты голосования</b>\n<i>${voting.title}</i>\n\n`;
+
+  text += `🏆 <b>Лучший игрок:</b>\n`;
+  if (results.best.length > 0) {
+    results.best.slice(0, 3).forEach((r, i) => {
+      const medal = ['🥇', '🥈', '🥉'][i] || '▫️';
+      text += `${medal} ${r.first_name || r.telegram_username} — ${r.count} гол.\n`;
+    });
+  } else {
+    text += `Нет голосов\n`;
+  }
+
+  text += `\n👎 <b>Худший игрок:</b>\n`;
+  if (results.worst.length > 0) {
+    results.worst.slice(0, 3).forEach((r, i) => {
+      const medal = ['🥇', '🥈', '🥉'][i] || '▫️';
+      text += `${medal} ${r.first_name || r.telegram_username} — ${r.count} гол.\n`;
+    });
+  } else {
+    text += `Нет голосов\n`;
+  }
+
+  try {
+    return await sendMessage(chatId, text);
+  } catch (e) {
+    // Ignore blocked users
+  }
+}
+
+module.exports = { sendMessage, sendPhoto, sendLocation, getFileUrl, sendVotingNotification, sendVotingResults };

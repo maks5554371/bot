@@ -6,7 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
 from config import BOT_TOKEN
-from handlers import registration, photo, location, messages
+from handlers import registration, photo, location, messages, song, voting, profile
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,7 +28,10 @@ async def main():
 
     # Регистрация роутеров (порядок важен!)
     dp.include_router(registration.router)
+    dp.include_router(voting.router)
+    dp.include_router(profile.router)
     dp.include_router(photo.router)
+    dp.include_router(song.router)  # песни — перед messages
     dp.include_router(location.router)
     dp.include_router(messages.router)  # текст — в конце, как fallback
 

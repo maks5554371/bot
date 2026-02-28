@@ -14,6 +14,15 @@ def main_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="📍 Поделиться геопозицией", request_location=True),
             ],
             [
+                KeyboardButton(text="🎵 Добавить песню"),
+                KeyboardButton(text="📋 Мои песни"),
+            ],
+            [
+                KeyboardButton(text="👤 Профиль"),
+                KeyboardButton(text="🏆 Топ игроков"),
+            ],
+            [
+                KeyboardButton(text="🗳 Голосовать"),
                 KeyboardButton(text="ℹ️ Мой статус"),
             ],
         ],
