@@ -28,27 +28,13 @@ async def show_profile(message: Message):
         f"👤 <b>Профиль</b>\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"📛 <b>{user.get('first_name', 'Без имени')}</b>\n"
-        f"🏷 Звание: <b>{user.get('title', 'Новичок')}</b>\n"
         f"🚗 Команда: <b>{team_name}</b>\n\n"
-        f"❤️ Жизни: {lives_display} ({lives})\n"
-        f"⭐️ Уровень: <b>{user.get('level', 1)}</b>\n"
-        f"✨ Опыт: <b>{user.get('experience', 0)}</b>\n"
-        f"🪙 Монеты: <b>{user.get('coins', 0)}</b>\n\n"
+        f"❤️ Жизни: {lives_display} ({lives})\n\n"
         f"📊 <b>Статистика:</b>\n"
         f"  📸 Фото отправлено: {stats.get('photos_sent', 0)}\n"
         f"  💬 Сообщений: {stats.get('messages_sent', 0)}\n"
         f"  🎵 Песен: {stats.get('songs_added', 0)}\n"
-        f"  🏆 Квестов: {stats.get('quests_completed', 0)}\n"
-        f"  🗳 Голосов отдано: {stats.get('votes_cast', 0)}\n"
-        f"  👍 Голосов «лучший»: {stats.get('best_votes_received', 0)}\n"
-        f"  👎 Голосов «худший»: {stats.get('worst_votes_received', 0)}\n"
     )
-
-    if inventory:
-        text += "\n🎒 <b>Инвентарь:</b>\n"
-        for item in inventory:
-            qty = f" x{item['quantity']}" if item.get('quantity', 1) > 1 else ""
-            text += f"  ▫️ {item['name']}{qty}\n"
 
     await message.answer(text, parse_mode='HTML')
 

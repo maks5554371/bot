@@ -74,19 +74,54 @@ export default function TeamsPage() {
     }
   };
 
+  const [drawing, setDrawing] = useState(false);
+  const [drawResult, setDrawResult] = useState(null);
+
+  const handleDraw = async () => {
+    if (!confirm('Раскидать всех зарегистрированных игроков по командам случайным образом? Текущий состав команд будет сброшен.')) return;
+    setDrawing(true);
+    setDrawResult(null);
+    try {
+      const res = await api.post('/teams/draw');
+      setDrawResult(`✅ ${res.data.total_players} игрок(ов) распределены по ${res.data.teams.length} командам`);
+      fetchData();
+    } catch (err) {
+      setDrawResult(`❌ ${err.response?.data?.error || 'Ошибка жеребьёвки'}`);
+    } finally {
+      setDrawing(false);
+    }
+  };
+
   if (loading) return <div className="text-center py-12 text-gray-500">Загрузка...</div>;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Команды ({teams.length})</h1>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          + Создать
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleDraw}
+            disabled={drawing || teams.length === 0}
+            className="bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            {drawing ? '⏳ Жеребьёвка...' : '🎲 Жеребьёвка'}
+          </button>
+          <button
+            onClick={() => setShowCreate(!showCreate)}
+            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            + Создать
+          </button>
+        </div>
       </div>
+
+      {drawResult && (
+        <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium ${
+          drawResult.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+        }`}>
+          {drawResult}
+        </div>
+      )}
 
       {/* Create form */}
       {showCreate && (

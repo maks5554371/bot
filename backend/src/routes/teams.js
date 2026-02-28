@@ -90,6 +90,58 @@ router.post('/:id/members', async (req, res) => {
   }
 });
 
+// POST /api/teams/draw — жеребьёвка: раскидать игроков по командам
+router.post('/draw', async (req, res) => {
+  try {
+    const teams = await Team.find();
+    if (teams.length === 0) return res.status(400).json({ error: 'Нет команд для жеребьёвки' });
+
+    // Все активные пользователи
+    const users = await User.find({ is_active: true });
+    if (users.length === 0) return res.status(400).json({ error: 'Нет зарегистрированных игроков' });
+
+    // Перемешать массив (Fisher-Yates)
+    const shuffled = [...users];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // Очистить все команды
+    await Team.updateMany({}, { $set: { members: [] } });
+    await User.updateMany({ is_active: true }, { $set: { team_id: null } });
+
+    // Распределить игроков по командам равномерно
+    const teamMembers = teams.map(() => []);
+    shuffled.forEach((user, idx) => {
+      teamMembers[idx % teams.length].push(user._id);
+    });
+
+    // Сохранить
+    for (let i = 0; i < teams.length; i++) {
+      teams[i].members = teamMembers[i];
+      await teams[i].save();
+      await User.updateMany(
+        { _id: { $in: teamMembers[i] } },
+        { team_id: teams[i]._id }
+      );
+    }
+
+    // Вернуть обновлённые команды
+    const result = await Team.find()
+      .populate('members', 'telegram_id telegram_username first_name last_location is_active')
+      .sort({ createdAt: -1 });
+
+    const io = req.app.get('io');
+    if (io) io.emit('teams_shuffled', result);
+
+    res.json({ teams: result, total_players: shuffled.length });
+  } catch (err) {
+    console.error('Draw error:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 // DELETE /api/teams/:id
 router.delete('/:id', async (req, res) => {
   try {
