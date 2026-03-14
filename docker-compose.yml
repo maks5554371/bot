@@ -8,7 +8,6 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-questadmin}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-    # Порт НЕ пробрасывается наружу — доступ только из docker-сети
     volumes:
       - mongo_data:/data/db
     networks:
@@ -18,7 +17,6 @@ services:
     build: ./backend
     container_name: quest-backend
     restart: unless-stopped
-    # Порт только внутри docker-сети, nginx на хосте проксирует
     expose:
       - "3001"
     ports:

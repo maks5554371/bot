@@ -6,8 +6,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+FROM alpine:3.20
+# Просто копируем собранную статику и держим контейнер живым
+COPY --from=build /app/dist /usr/share/frontend/html
+CMD ["tail", "-f", "/dev/null"]
