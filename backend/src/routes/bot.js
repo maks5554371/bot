@@ -5,6 +5,10 @@ const spotify = require('../services/spotify');
 
 const router = express.Router();
 
+function isValidLatLng(lat, lng) {
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
 // POST /api/bot/register — регистрация участника из бота
 router.post('/register', async (req, res) => {
   try {
@@ -47,6 +51,11 @@ router.post('/photo', async (req, res) => {
     const team = await Team.findById(user.team_id);
     if (!team) return res.status(404).json({ error: 'Команда не найдена' });
 
+    const activeQuest = await Quest.findOne({ status: 'active' }).select('clues').sort({ updatedAt: -1 });
+    if (!activeQuest || !activeQuest.clues?.length) {
+      return res.status(400).json({ error: 'Активный квест не найден' });
+    }
+
     const report = await PhotoReport.create({
       team_id: team._id,
       user_id: user._id,
@@ -76,9 +85,13 @@ router.post('/location', async (req, res) => {
       return res.status(400).json({ error: 'telegram_id, lat, lng обязательны' });
     }
 
+    if (!isValidLatLng(Number(lat), Number(lng))) {
+      return res.status(400).json({ error: 'Неверные координаты' });
+    }
+
     const user = await User.findOneAndUpdate(
       { telegram_id },
-      { last_location: { lat, lng, updated_at: new Date() } },
+      { last_location: { lat: Number(lat), lng: Number(lng), updated_at: new Date() } },
       { new: true }
     );
 
@@ -239,8 +252,8 @@ router.get('/profile', async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
   try {
     const users = await User.find({ is_active: true })
-      .select('first_name telegram_username lives experience level title')
-      .sort({ lives: -1, experience: -1 })
+      .select('first_name telegram_username lives level')
+      .sort({ lives: -1, level: -1 })
       .limit(20);
     res.json(users);
   } catch (err) {

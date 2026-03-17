@@ -8,7 +8,6 @@ router.get('/', async (req, res) => {
   try {
     const teams = await Team.find()
       .populate('members', 'telegram_id telegram_username first_name last_location is_active')
-      .populate('quest_id', 'title status')
       .sort({ createdAt: -1 });
     res.json(teams);
   } catch (err) {
@@ -19,10 +18,10 @@ router.get('/', async (req, res) => {
 // POST /api/teams
 router.post('/', async (req, res) => {
   try {
-    const { name, color, quest_id } = req.body;
+    const { name, color } = req.body;
     if (!name) return res.status(400).json({ error: 'Название команды обязательно' });
 
-    const team = await Team.create({ name, color, quest_id });
+    const team = await Team.create({ name, color });
     const io = req.app.get('io');
     if (io) io.emit('team_created', team);
     res.status(201).json(team);
@@ -34,11 +33,10 @@ router.post('/', async (req, res) => {
 // PATCH /api/teams/:id
 router.patch('/:id', async (req, res) => {
   try {
-    const { name, color, quest_id, current_clue_index } = req.body;
+    const { name, color, current_clue_index } = req.body;
     const update = {};
     if (name !== undefined) update.name = name;
     if (color !== undefined) update.color = color;
-    if (quest_id !== undefined) update.quest_id = quest_id;
     if (current_clue_index !== undefined) update.current_clue_index = current_clue_index;
 
     const team = await Team.findByIdAndUpdate(req.params.id, update, { new: true })

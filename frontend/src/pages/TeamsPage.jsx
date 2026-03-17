@@ -3,19 +3,14 @@ import api from '../services/api';
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState([]);
-  const [quests, setQuests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newTeam, setNewTeam] = useState({ name: '', color: '#3B82F6' });
 
   const fetchData = async () => {
     try {
-      const [teamsRes, questsRes] = await Promise.all([
-        api.get('/teams'),
-        api.get('/quests'),
-      ]);
+      const teamsRes = await api.get('/teams');
       setTeams(teamsRes.data);
-      setQuests(questsRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,15 +36,6 @@ export default function TeamsPage() {
     if (!confirm('Удалить команду?')) return;
     try {
       await api.delete(`/teams/${id}`);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const assignQuest = async (teamId, questId) => {
-    try {
-      await api.patch(`/teams/${teamId}`, { quest_id: questId || null });
       fetchData();
     } catch (err) {
       console.error(err);
@@ -171,19 +157,9 @@ export default function TeamsPage() {
               </button>
             </div>
 
-            {/* Quest assignment */}
+            {/* Quest controls */}
             <div className="px-5 py-3 bg-gray-50 flex items-center gap-3">
-              <span className="text-sm text-gray-600">Квест:</span>
-              <select
-                value={team.quest_id?._id || team.quest_id || ''}
-                onChange={(e) => assignQuest(team._id, e.target.value)}
-                className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-primary outline-none flex-1"
-              >
-                <option value="">Не назначен</option>
-                {quests.map((q) => (
-                  <option key={q._id} value={q._id}>{q.title}</option>
-                ))}
-              </select>
+              <span className="text-sm text-gray-600 flex-1">Используется общий активный квест</span>
               <button
                 onClick={() => sendFirstClue(team._id)}
                 className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium"

@@ -15,10 +15,7 @@ const userSchema = new mongoose.Schema({
   },
   // --- Profile ---
   lives: { type: Number, default: 3 },
-  experience: { type: Number, default: 0 },
   level: { type: Number, default: 1 },
-  title: { type: String, default: 'Новичок' },
-  coins: { type: Number, default: 0 },
   inventory: [{
     name: { type: String },
     description: { type: String, default: '' },

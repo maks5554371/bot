@@ -41,10 +41,7 @@ export default function UsersPage() {
     setEditingUser(user._id);
     setEditForm({
       lives: user.lives ?? 3,
-      experience: user.experience ?? 0,
       level: user.level ?? 1,
-      title: user.title ?? 'Новичок',
-      coins: user.coins ?? 0,
     });
   };
 
@@ -178,18 +175,6 @@ export default function UsersPage() {
                   <span className="text-gray-500">⭐️ Уровень</span>
                   <span className="font-medium">{user.level ?? 1}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">✨ Опыт</span>
-                  <span className="font-medium">{user.experience ?? 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">🪙 Монеты</span>
-                  <span className="font-medium">{user.coins ?? 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">🏷 Звание</span>
-                  <span className="font-medium">{user.title ?? 'Новичок'}</span>
-                </div>
               </div>
 
               {/* Stats */}
@@ -251,38 +236,11 @@ export default function UsersPage() {
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-500">✨ Опыт</label>
-                <input
-                  type="number"
-                  value={editForm.experience}
-                  onChange={(e) => setEditForm({ ...editForm, experience: parseInt(e.target.value) || 0 })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-              <div>
                 <label className="text-sm text-gray-500">⭐️ Уровень</label>
                 <input
                   type="number"
                   value={editForm.level}
                   onChange={(e) => setEditForm({ ...editForm, level: parseInt(e.target.value) || 1 })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">🏷 Звание</label>
-                <input
-                  type="text"
-                  value={editForm.title}
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500">🪙 Монеты</label>
-                <input
-                  type="number"
-                  value={editForm.coins}
-                  onChange={(e) => setEditForm({ ...editForm, coins: parseInt(e.target.value) || 0 })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-primary outline-none"
                 />
               </div>

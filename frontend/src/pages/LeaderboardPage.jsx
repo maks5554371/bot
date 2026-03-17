@@ -36,9 +36,6 @@ export default function LeaderboardPage() {
               <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Команда</th>
               <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">❤️ Жизни</th>
               <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">⭐️ Уровень</th>
-              <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">✨ Опыт</th>
-              <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">🪙 Монеты</th>
-              <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">🏷 Звание</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -76,9 +73,6 @@ export default function LeaderboardPage() {
                   <span className="text-gray-400 text-sm ml-1">({user.lives ?? 0})</span>
                 </td>
                 <td className="px-6 py-4 text-center font-medium">{user.level ?? 1}</td>
-                <td className="px-6 py-4 text-center">{user.experience ?? 0}</td>
-                <td className="px-6 py-4 text-center">{user.coins ?? 0}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{user.title ?? 'Новичок'}</td>
               </tr>
             ))}
           </tbody>

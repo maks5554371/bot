@@ -6,6 +6,10 @@ const config = require('../config');
 
 const router = express.Router();
 
+async function getActiveQuest() {
+  return Quest.findOne({ status: 'active' }).sort({ updatedAt: -1 });
+}
+
 // GET /api/photos — список фото-отчётов
 router.get('/', async (req, res) => {
   try {
@@ -52,7 +56,7 @@ router.patch('/:id', async (req, res) => {
       req.params.id,
       { status, admin_comment: admin_comment || '', reviewed_at: new Date() },
       { new: true }
-    ).populate('team_id', 'name color current_clue_index quest_id')
+    ).populate('team_id', 'name color current_clue_index')
      .populate('user_id', 'telegram_id telegram_username first_name');
 
     if (!photo) return res.status(404).json({ error: 'Фото не найдено' });
@@ -62,8 +66,8 @@ router.patch('/:id', async (req, res) => {
     // Если аппрувнуто — продвинуть команду к следующей подсказке
     if (status === 'approved' && photo.team_id) {
       const team = await Team.findById(photo.team_id._id).populate('members', 'telegram_id');
-      if (team && team.quest_id) {
-        const quest = await Quest.findById(team.quest_id);
+      if (team) {
+        const quest = await getActiveQuest();
         if (quest) {
           const nextIndex = team.current_clue_index + 1;
           if (nextIndex < quest.clues.length) {
@@ -71,7 +75,7 @@ router.patch('/:id', async (req, res) => {
             await team.save();
 
             const clue = quest.clues[nextIndex];
-            const clueText = `🔍 <b>Подсказка ${nextIndex + 1}/${quest.clues.length}</b>\n\n${clue.text}`;
+            const clueText = `🔍 <b>Подсказка ${nextIndex + 1}/${quest.clues.length}</b>\n\n${clue.text}${clue.media_url ? `\n\n🎬 Медиа: ${clue.media_url}` : ''}`;
 
             // Отправить подсказку всем участникам команды
             for (const member of team.members) {

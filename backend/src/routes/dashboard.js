@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
       pendingPhotos,
       approvedPhotos,
       activeQuests,
+      activeQuest,
       users,
       teams,
     ] = await Promise.all([
@@ -20,13 +21,14 @@ router.get('/', async (req, res) => {
       PhotoReport.countDocuments({ status: 'pending' }),
       PhotoReport.countDocuments({ status: 'approved' }),
       Quest.countDocuments({ status: 'active' }),
+      Quest.findOne({ status: 'active' }).select('clues').sort({ updatedAt: -1 }),
       User.find({ is_active: true }).select('first_name telegram_username team_id last_location').populate('team_id', 'name color'),
-      Team.find().populate('members', 'first_name telegram_username last_location').populate('quest_id', 'title clues'),
+      Team.find().populate('members', 'first_name telegram_username last_location'),
     ]);
 
     // Прогресс команд
+    const totalClues = activeQuest?.clues?.length || 0;
     const teamProgress = teams.map(t => {
-      const totalClues = t.quest_id?.clues?.length || 0;
       return {
         _id: t._id,
         name: t.name,

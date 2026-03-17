@@ -4,14 +4,17 @@ const telegram = require('../services/telegram');
 
 const router = express.Router();
 
+async function getActiveQuest() {
+  return Quest.findOne({ status: 'active' }).sort({ updatedAt: -1 });
+}
+
 // POST /api/clues/send-first/:teamId — отправить первую подсказку команде
 router.post('/send-first/:teamId', async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId).populate('members', 'telegram_id');
     if (!team) return res.status(404).json({ error: 'Команда не найдена' });
-    if (!team.quest_id) return res.status(400).json({ error: 'У команды нет квеста' });
 
-    const quest = await Quest.findById(team.quest_id);
+    const quest = await getActiveQuest();
     if (!quest || !quest.clues.length) return res.status(400).json({ error: 'В квесте нет подсказок' });
 
     // Сбросить прогресс
@@ -19,7 +22,7 @@ router.post('/send-first/:teamId', async (req, res) => {
     await team.save();
 
     const clue = quest.clues[0];
-    const clueText = `🚀 <b>Квест начался!</b>\n\n🔍 <b>Подсказка 1/${quest.clues.length}</b>\n\n${clue.text}`;
+    const clueText = `🚀 <b>Квест начался!</b>\n\n🔍 <b>Подсказка 1/${quest.clues.length}</b>\n\n${clue.text}${clue.media_url ? `\n\n🎬 Медиа: ${clue.media_url}` : ''}`;
 
     for (const member of team.members) {
       try {
@@ -47,9 +50,8 @@ router.post('/send-next/:teamId', async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId).populate('members', 'telegram_id');
     if (!team) return res.status(404).json({ error: 'Команда не найдена' });
-    if (!team.quest_id) return res.status(400).json({ error: 'У команды нет квеста' });
 
-    const quest = await Quest.findById(team.quest_id);
+    const quest = await getActiveQuest();
     if (!quest) return res.status(404).json({ error: 'Квест не найден' });
 
     const nextIndex = team.current_clue_index + 1;
@@ -61,7 +63,7 @@ router.post('/send-next/:teamId', async (req, res) => {
     await team.save();
 
     const clue = quest.clues[nextIndex];
-    const clueText = `🔍 <b>Подсказка ${nextIndex + 1}/${quest.clues.length}</b>\n\n${clue.text}`;
+    const clueText = `🔍 <b>Подсказка ${nextIndex + 1}/${quest.clues.length}</b>\n\n${clue.text}${clue.media_url ? `\n\n🎬 Медиа: ${clue.media_url}` : ''}`;
 
     for (const member of team.members) {
       try {

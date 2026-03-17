@@ -3,13 +3,16 @@ import api from '../services/api';
 
 export default function PhotosPage() {
   const [photos, setPhotos] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
+  const [teamFilter, setTeamFilter] = useState('');
 
   const fetchPhotos = async () => {
     try {
       const params = {};
       if (filter) params.status = filter;
+      if (teamFilter) params.team_id = teamFilter;
       const res = await api.get('/photos', { params });
       setPhotos(res.data);
     } catch (err) {
@@ -19,7 +22,30 @@ export default function PhotosPage() {
     }
   };
 
-  useEffect(() => { fetchPhotos(); }, [filter]);
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [photosRes, teamsRes] = await Promise.all([
+          api.get('/photos', { params: { status: filter } }),
+          api.get('/teams'),
+        ]);
+        setPhotos(photosRes.data);
+        setTeams(teamsRes.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      fetchPhotos();
+    }
+  }, [filter, teamFilter]);
 
   const reviewPhoto = async (id, status, comment = '') => {
     try {
@@ -54,6 +80,20 @@ export default function PhotosPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mb-4 bg-white rounded-xl shadow p-4">
+        <label className="text-sm text-gray-600 mr-2">Фильтр по команде:</label>
+        <select
+          value={teamFilter}
+          onChange={(e) => setTeamFilter(e.target.value)}
+          className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+        >
+          <option value="">Все команды</option>
+          {teams.map((team) => (
+            <option key={team._id} value={team._id}>{team.name}</option>
+          ))}
+        </select>
       </div>
 
       {photos.length === 0 ? (

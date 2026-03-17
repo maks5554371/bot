@@ -18,7 +18,6 @@ async def show_profile(message: Message):
     user = result
     team_name = user.get('team_id', {}).get('name', 'Без команды') if isinstance(user.get('team_id'), dict) else 'Без команды'
     stats = user.get('stats', {})
-    inventory = user.get('inventory', [])
 
     # Формируем жизни визуально
     lives = user.get('lives', 0)
@@ -65,7 +64,6 @@ async def show_leaderboard(message: Message):
             lives_hearts += f"+{lives - 5}"
 
         # Highlight the current user
-        is_me = ""
         text += f"{medal} <b>{name}</b> — {lives_hearts} | Ур. {level}\n"
 
     await message.answer(text, parse_mode='HTML')
