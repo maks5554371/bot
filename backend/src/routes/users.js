@@ -1,5 +1,5 @@
 const express = require('express');
-const { User, Team } = require('../models');
+const { User, Team, Message } = require('../models');
 
 const router = express.Router();
 
@@ -53,12 +53,14 @@ router.patch('/:id', async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, update, { new: true }).populate('team_id', 'name color');
     if (!user) return res.status(404).json({ error: 'Участник не найден' });
 
-    // Если назначена команда — добавить в team.members
-    if (team_id) {
-      // Удалить из старых команд
+    // Синхронизация team.members
+    if (team_id !== undefined) {
+      // Удалить из всех команд
       await Team.updateMany({ members: user._id }, { $pull: { members: user._id } });
-      // Добавить в новую
-      await Team.findByIdAndUpdate(team_id, { $addToSet: { members: user._id } });
+      // Если назначена новая — добавить
+      if (team_id) {
+        await Team.findByIdAndUpdate(team_id, { $addToSet: { members: user._id } });
+      }
     }
 
     const io = req.app.get('io');
@@ -67,6 +69,32 @@ router.patch('/:id', async (req, res) => {
     res.json(user);
   } catch (err) {
     console.error('Error updating user:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// DELETE /api/users/:id — удалить участника
+router.delete('/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Участник не найден' });
+
+    // Удалить из команды
+    if (user.team_id) {
+      await Team.updateMany({ members: user._id }, { $pull: { members: user._id } });
+    }
+
+    // Удалить сообщения
+    await Message.deleteMany({ target_user_id: user._id });
+
+    await User.findByIdAndDelete(req.params.id);
+
+    const io = req.app.get('io');
+    if (io) io.emit('user_deleted', { _id: user._id });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error deleting user:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });

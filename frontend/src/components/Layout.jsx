@@ -1,8 +1,9 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import socket from '../services/socket';
+import api from '../services/api';
 import Notifications from './Notifications';
 
 const navItems = [
@@ -10,6 +11,7 @@ const navItems = [
   { to: '/users', label: '👥 Участники' },
   { to: '/teams', label: '🚗 Команды' },
   { to: '/quest', label: '🗺️ Квест' },
+  { to: '/messages', label: '💬 Сообщения' },
   { to: '/photos', label: '📸 Фото' },
   { to: '/map', label: '📍 Карта' },
   { to: '/playlist', label: '🎵 Плейлист' },
@@ -21,6 +23,19 @@ export default function Layout() {
   const { admin, logout } = useAuthStore();
   const addNotification = useNotificationStore((s) => s.addNotification);
   const navigate = useNavigate();
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const res = await api.get('/messages/conversations');
+      const total = res.data.reduce((sum, c) => sum + c.unread_count, 0);
+      setUnreadMessages(total);
+    } catch (e) { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    fetchUnread();
+  }, [fetchUnread]);
 
   useEffect(() => {
     socket.connect();
@@ -51,6 +66,7 @@ export default function Layout() {
         message: `от ${data.user?.first_name || 'участника'}`,
         type: 'info',
       });
+      fetchUnread();
     });
 
     socket.on('new_song', (data) => {
@@ -109,7 +125,7 @@ export default function Layout() {
               to={item.to}
               end={item.to === '/'}
               className={({ isActive }) =>
-                `block px-6 py-3 text-sm transition-colors ${
+                `flex items-center justify-between px-6 py-3 text-sm transition-colors ${
                   isActive
                     ? 'bg-primary text-white font-medium'
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -117,6 +133,11 @@ export default function Layout() {
               }
             >
               {item.label}
+              {item.to === '/messages' && unreadMessages > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {unreadMessages}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

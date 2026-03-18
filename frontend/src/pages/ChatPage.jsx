@@ -21,6 +21,8 @@ export default function ChatPage() {
       ]);
       setUser(userRes.data);
       setMessages(msgRes.data.reverse()); // oldest first
+      // Mark messages as read
+      api.post(`/messages/read/${userId}`).catch(() => {});
     } catch (err) {
       console.error(err);
     } finally {

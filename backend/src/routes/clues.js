@@ -54,6 +54,7 @@ async function sendClueToMember(chatId, clueText, media) {
     } else {
       // Для фото: отправляем фото с подписью
       try {
+        console.log('Sending photo URL to Telegram:', media.url);
         await telegram.sendPhoto(chatId, media.url, clueText);
       } catch (e) {
         // Если фото не удалось — отправляем текст + ссылку

@@ -88,6 +88,31 @@ router.post('/:id/members', async (req, res) => {
   }
 });
 
+// DELETE /api/teams/:id/members/:userId — убрать участника из команды
+router.delete('/:id/members/:userId', async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ error: 'Команда не найдена' });
+
+    // Убрать из members
+    await Team.findByIdAndUpdate(req.params.id, { $pull: { members: req.params.userId } });
+
+    // Очистить team_id у пользователя
+    await User.findByIdAndUpdate(req.params.userId, { team_id: null });
+
+    const populated = await Team.findById(req.params.id)
+      .populate('members', 'telegram_id telegram_username first_name last_location is_active');
+
+    const io = req.app.get('io');
+    if (io) io.emit('team_updated', populated);
+
+    res.json(populated);
+  } catch (err) {
+    console.error('Error removing member:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 // POST /api/teams/draw — жеребьёвка: раскидать игроков по командам
 router.post('/draw', async (req, res) => {
   try {

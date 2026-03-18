@@ -246,6 +246,31 @@ router.get('/profile', async (req, res) => {
   }
 });
 
+// POST /api/bot/profile/name — изменить имя
+router.post('/profile/name', async (req, res) => {
+  try {
+    const { telegram_id, first_name } = req.body;
+    if (!telegram_id || !first_name) {
+      return res.status(400).json({ error: 'telegram_id и first_name обязательны' });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { telegram_id: Number(telegram_id) },
+      { first_name: first_name.trim() },
+      { new: true },
+    );
+    if (!user) return res.status(404).json({ error: 'Участник не найден' });
+
+    const io = req.app.get('io');
+    if (io) io.emit('user_updated', user);
+
+    res.json({ ok: true, first_name: user.first_name });
+  } catch (err) {
+    console.error('Bot profile name error:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 // GET /api/bot/leaderboard — топ по жизням
 router.get('/leaderboard', async (req, res) => {
   try {

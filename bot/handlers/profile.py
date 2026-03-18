@@ -1,9 +1,16 @@
 from aiogram import Router, F
 from aiogram.types import Message
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 
-from services.api import api_get
+from services.api import api_get, api_post
 
 router = Router()
+
+
+class ProfileStates(StatesGroup):
+    waiting_new_name = State()
 
 
 @router.message(F.text.in_(["👤 Профиль", "Профиль"]))
@@ -36,6 +43,39 @@ async def show_profile(message: Message):
     )
 
     await message.answer(text, parse_mode='HTML')
+
+
+@router.message(Command("name"))
+async def cmd_change_name(message: Message, state: FSMContext):
+    """Команда /name — начать смену имени."""
+    await message.answer(
+        "✏️ Введи новое имя (как тебя будут видеть в игре):",
+    )
+    await state.set_state(ProfileStates.waiting_new_name)
+
+
+@router.message(ProfileStates.waiting_new_name)
+async def process_new_name(message: Message, state: FSMContext):
+    """Обработка нового имени."""
+    new_name = message.text.strip() if message.text else ''
+    if not new_name or len(new_name) > 50:
+        await message.answer("❌ Имя не может быть пустым или длиннее 50 символов. Попробуй ещё раз:")
+        return
+
+    result = await api_post('profile/name', {
+        'telegram_id': message.from_user.id,
+        'first_name': new_name,
+    })
+
+    if result.get('ok'):
+        await message.answer(
+            f"✅ Имя изменено на <b>{result['first_name']}</b>",
+            parse_mode='HTML',
+        )
+    else:
+        await message.answer("❌ Не удалось изменить имя. Попробуй /start сначала.")
+
+    await state.clear()
 
 
 @router.message(F.text.in_(["🏆 Топ игроков", "Топ игроков"]))

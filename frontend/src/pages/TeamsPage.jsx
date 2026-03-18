@@ -70,6 +70,16 @@ export default function TeamsPage() {
     }
   };
 
+  const removeMember = async (teamId, userId, name) => {
+    if (!confirm(`Убрать "${name}" из команды?`)) return;
+    try {
+      await api.delete(`/teams/${teamId}/members/${userId}`);
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Ошибка');
+    }
+  };
+
   const [drawing, setDrawing] = useState(false);
   const [drawResult, setDrawResult] = useState(null);
 
@@ -197,16 +207,23 @@ export default function TeamsPage() {
               ) : (
                 <div className="space-y-2">
                   {team.members.map((m) => (
-                    <div key={m._id} className="flex items-center gap-3 text-sm">
+                    <div key={m._id} className="flex items-center gap-3 text-sm group">
                       <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold">
                         {(m.first_name || '?')[0]}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{m.first_name || m.telegram_username || 'Без имени'}</p>
                         {m.last_location?.lat && (
                           <p className="text-xs text-green-500">📍 Онлайн</p>
                         )}
                       </div>
+                      <button
+                        onClick={() => removeMember(team._id, m._id, m.first_name || m.telegram_username || 'участника')}
+                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 text-xs transition-opacity"
+                        title="Убрать из команды"
+                      >
+                        ✕
+                      </button>
                     </div>
                   ))}
                 </div>

@@ -37,9 +37,21 @@ export default function UsersPage() {
     }
   };
 
+  const deleteUser = async (user) => {
+    const name = user.first_name || user.telegram_username || user.telegram_id;
+    if (!confirm(`Удалить участника "${name}"? Это действие необратимо.`)) return;
+    try {
+      await api.delete(`/users/${user._id}`);
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Ошибка при удалении');
+    }
+  };
+
   const openEditProfile = (user) => {
     setEditingUser(user._id);
     setEditForm({
+      first_name: user.first_name || '',
       lives: user.lives ?? 3,
       level: user.level ?? 1,
     });
@@ -134,6 +146,12 @@ export default function UsersPage() {
                     >
                       💬
                     </button>
+                    <button
+                      onClick={() => deleteUser(user)}
+                      className="text-sm text-red-500 hover:text-red-700 font-medium"
+                    >
+                      🗑
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -214,6 +232,12 @@ export default function UsersPage() {
                 >
                   💬
                 </button>
+                <button
+                  onClick={() => deleteUser(user)}
+                  className="px-4 text-sm py-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  🗑
+                </button>
               </div>
             </div>
           ))}
@@ -226,6 +250,16 @@ export default function UsersPage() {
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold mb-4">✏️ Редактирование профиля</h2>
             <div className="space-y-3">
+              <div>
+                <label className="text-sm text-gray-500">📛 Имя</label>
+                <input
+                  type="text"
+                  value={editForm.first_name}
+                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  placeholder="Имя участника"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
               <div>
                 <label className="text-sm text-gray-500">❤️ Жизни</label>
                 <input
