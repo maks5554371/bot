@@ -139,33 +139,36 @@ router.post('/message', async (req, res) => {
   }
 });
 
-// POST /api/bot/song — добавить песню в плейлист
-router.post('/song', async (req, res) => {
+// POST /api/bot/song/search — поиск песни на Spotify (без добавления)
+router.post('/song/search', async (req, res) => {
   try {
-    const { telegram_id, query: songQuery } = req.body;
-    if (!telegram_id || !songQuery) {
-      return res.status(400).json({ error: 'telegram_id и query обязательны' });
+    const { query: songQuery } = req.body;
+    if (!songQuery) {
+      return res.status(400).json({ error: 'query обязателен' });
     }
 
-    const user = await User.findOne({ telegram_id });
-    if (!user) return res.status(404).json({ error: 'Участник не найден' });
-
-    // Check limit
-    const count = await Song.countDocuments({ user_id: user._id });
-    if (count >= config.maxSongsPerUser) {
-      return res.status(400).json({
-        error: 'limit',
-        message: `Лимит ${config.maxSongsPerUser} песен уже достигнут`,
-        count,
-        max: config.maxSongsPerUser,
-      });
-    }
-
-    // Search on Spotify
     const track = await spotify.searchTrack(songQuery);
     if (!track) {
       return res.status(404).json({ error: 'not_found', message: 'Песня не найдена на Spotify' });
     }
+
+    res.json({ track });
+  } catch (err) {
+    console.error('Bot song search error:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// POST /api/bot/song — добавить песню в плейлист (принимает track объект)
+router.post('/song', async (req, res) => {
+  try {
+    const { telegram_id, track } = req.body;
+    if (!telegram_id || !track || !track.spotify_id) {
+      return res.status(400).json({ error: 'telegram_id и track обязательны' });
+    }
+
+    const user = await User.findOne({ telegram_id });
+    if (!user) return res.status(404).json({ error: 'Участник не найден' });
 
     // Check duplicate
     const existing = await Song.findOne({ user_id: user._id, spotify_id: track.spotify_id });
@@ -197,10 +200,7 @@ router.post('/song', async (req, res) => {
     const io = req.app.get('io');
     if (io) io.emit('new_song', { song, user });
 
-    res.status(201).json({
-      song,
-      remaining: config.maxSongsPerUser - count - 1,
-    });
+    res.status(201).json({ song });
   } catch (err) {
     console.error('Bot song error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -220,8 +220,6 @@ router.get('/songs', async (req, res) => {
     res.json({
       songs,
       count: songs.length,
-      max: config.maxSongsPerUser,
-      remaining: config.maxSongsPerUser - songs.length,
     });
   } catch (err) {
     console.error('Bot songs list error:', err);

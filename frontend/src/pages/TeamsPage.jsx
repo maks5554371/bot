@@ -60,6 +60,16 @@ export default function TeamsPage() {
     }
   };
 
+  const sendLocationHint = async (teamId) => {
+    if (!confirm('Отправить координаты текущей подсказки команде?')) return;
+    try {
+      await api.post(`/clues/send-location/${teamId}`);
+      alert('📍 Координаты отправлены!');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Ошибка');
+    }
+  };
+
   const [drawing, setDrawing] = useState(false);
   const [drawResult, setDrawResult] = useState(null);
 
@@ -171,6 +181,12 @@ export default function TeamsPage() {
                 className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium"
               >
                 ➡️ Далее
+              </button>
+              <button
+                onClick={() => sendLocationHint(team._id)}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium"
+              >
+                📍 Точка
               </button>
             </div>
 

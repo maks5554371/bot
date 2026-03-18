@@ -13,7 +13,7 @@ class VotingState(StatesGroup):
     choosing_worst = State()
 
 
-@router.message(F.text == "🗳 Голосовать")
+@router.message(F.text.in_(["🗳 Голосовать", "Голосовать"]))
 async def start_voting(message: Message, state: FSMContext):
     """Начать процесс голосования."""
     # Проверяем, есть ли активное голосование

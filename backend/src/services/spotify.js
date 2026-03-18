@@ -1,5 +1,5 @@
-const axios = require('axios');
-const config = require('../config');
+const axios = require("axios");
+const config = require("../config");
 
 let accessToken = null;
 let tokenExpiresAt = 0;
@@ -14,20 +14,18 @@ async function getAccessToken() {
 
   const { spotifyClientId, spotifyClientSecret } = config;
   if (!spotifyClientId || !spotifyClientSecret) {
-    throw new Error('Spotify credentials not configured');
+    throw new Error("Spotify credentials not configured");
   }
 
   const resp = await axios.post(
-    'https://accounts.spotify.com/api/token',
-    new URLSearchParams({ grant_type: 'client_credentials' }).toString(),
+    "https://accounts.spotify.com/api/token",
+    new URLSearchParams({ grant_type: "client_credentials" }).toString(),
     {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization:
-          'Basic ' +
-          Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64'),
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic " + Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString("base64"),
       },
-    }
+    },
   );
 
   accessToken = resp.data.access_token;
@@ -42,23 +40,21 @@ async function getAccessToken() {
 async function getUserAccessToken() {
   const { spotifyClientId, spotifyClientSecret, spotifyRefreshToken } = config;
   if (!spotifyRefreshToken) {
-    throw new Error('Spotify refresh token not configured');
+    throw new Error("Spotify refresh token not configured");
   }
 
   const resp = await axios.post(
-    'https://accounts.spotify.com/api/token',
+    "https://accounts.spotify.com/api/token",
     new URLSearchParams({
-      grant_type: 'refresh_token',
+      grant_type: "refresh_token",
       refresh_token: spotifyRefreshToken,
     }).toString(),
     {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization:
-          'Basic ' +
-          Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString('base64'),
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic " + Buffer.from(`${spotifyClientId}:${spotifyClientSecret}`).toString("base64"),
       },
-    }
+    },
   );
 
   return resp.data.access_token;
@@ -71,11 +67,11 @@ async function getUserAccessToken() {
 async function searchTrack(query) {
   const token = await getAccessToken();
 
-  const resp = await axios.get('https://api.spotify.com/v1/search', {
+  const resp = await axios.get("https://api.spotify.com/v1/search", {
     headers: { Authorization: `Bearer ${token}` },
     params: {
       q: query,
-      type: 'track',
+      type: "track",
       limit: 1,
     },
   });
@@ -88,11 +84,11 @@ async function searchTrack(query) {
     spotify_id: track.id,
     spotify_uri: track.uri,
     name: track.name,
-    artist: track.artists.map((a) => a.name).join(', '),
-    album: track.album?.name || '',
-    cover_url: track.album?.images?.[0]?.url || '',
-    preview_url: track.preview_url || '',
-    external_url: track.external_urls?.spotify || '',
+    artist: track.artists.map((a) => a.name).join(", "),
+    album: track.album?.name || "",
+    cover_url: track.album?.images?.[0]?.url || "",
+    preview_url: track.preview_url || "",
+    external_url: track.external_urls?.spotify || "",
   };
 }
 
@@ -102,20 +98,20 @@ async function searchTrack(query) {
 async function addTrackToPlaylist(spotifyUri) {
   const { spotifyPlaylistId } = config;
   if (!spotifyPlaylistId) {
-    throw new Error('Spotify playlist ID not configured');
+    throw new Error("Spotify playlist ID not configured");
   }
 
   const token = await getUserAccessToken();
 
   await axios.post(
-    `https://api.spotify.com/v1/playlists/${spotifyPlaylistId}/tracks`,
+    `https://api.spotify.com/v1/playlists/${spotifyPlaylistId}/items`,
     { uris: [spotifyUri] },
     {
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-    }
+    },
   );
 }
 
@@ -128,18 +124,15 @@ async function removeTrackFromPlaylist(spotifyUri) {
 
   const token = await getUserAccessToken();
 
-  await axios.delete(
-    `https://api.spotify.com/v1/playlists/${spotifyPlaylistId}/tracks`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      data: {
-        tracks: [{ uri: spotifyUri }],
-      },
-    }
-  );
+  await axios.delete(`https://api.spotify.com/v1/playlists/${spotifyPlaylistId}/items`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    data: {
+      tracks: [{ uri: spotifyUri }],
+    },
+  });
 }
 
 module.exports = {

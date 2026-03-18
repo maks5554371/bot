@@ -6,7 +6,7 @@ from services.api import api_get
 router = Router()
 
 
-@router.message(F.text == "👤 Профиль")
+@router.message(F.text.in_(["👤 Профиль", "Профиль"]))
 async def show_profile(message: Message):
     """Показать профиль игрока."""
     result = await api_get('profile', {'telegram_id': message.from_user.id})
@@ -38,7 +38,7 @@ async def show_profile(message: Message):
     await message.answer(text, parse_mode='HTML')
 
 
-@router.message(F.text == "🏆 Топ игроков")
+@router.message(F.text.in_(["🏆 Топ игроков", "Топ игроков"]))
 async def show_leaderboard(message: Message):
     """Показать таблицу лидеров."""
     result = await api_get('leaderboard')
