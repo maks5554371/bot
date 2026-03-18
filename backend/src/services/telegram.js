@@ -33,6 +33,21 @@ async function sendPhoto(chatId, photo, caption = '') {
   }
 }
 
+async function sendVideo(chatId, video, caption = '') {
+  try {
+    const res = await axios.post(`${TELEGRAM_API}/sendVideo`, {
+      chat_id: chatId,
+      video,
+      caption,
+      parse_mode: 'HTML',
+    });
+    return res.data;
+  } catch (err) {
+    console.error('Telegram sendVideo error:', err.response?.data || err.message);
+    throw err;
+  }
+}
+
 async function sendLocation(chatId, latitude, longitude) {
   try {
     const res = await axios.post(`${TELEGRAM_API}/sendLocation`, {
@@ -103,4 +118,4 @@ async function sendVotingResults(chatId, voting, results) {
   }
 }
 
-module.exports = { sendMessage, sendPhoto, sendLocation, getFileUrl, sendVotingNotification, sendVotingResults };
+module.exports = { sendMessage, sendPhoto, sendVideo, sendLocation, getFileUrl, sendVotingNotification, sendVotingResults };
