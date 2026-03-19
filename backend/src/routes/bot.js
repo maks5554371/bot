@@ -165,9 +165,15 @@ router.post('/check-answer', async (req, res) => {
       return res.json({ matched: false });
     }
 
-    // Проверка ответа (регистронезависимо)
+    // Собираем все допустимые варианты (разбиваем каждый элемент по запятой на случай если ответы слиплись в одну строку)
+    const validAnswers = clue.answers
+      .flatMap((a) => a.split(','))
+      .map((a) => a.trim().toLowerCase())
+      .filter(Boolean);
+
+    // Проверка ответа (регистронезависимо, пробелы убираем)
     const normalized = answer.trim().toLowerCase();
-    const isCorrect = clue.answers.some((a) => a.trim().toLowerCase() === normalized);
+    const isCorrect = validAnswers.includes(normalized);
 
     if (!isCorrect) {
       return res.json({ matched: true, correct: false });

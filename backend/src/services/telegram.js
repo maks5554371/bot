@@ -1,7 +1,11 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const FormData = require('form-data');
 const config = require('../config');
 
 const TELEGRAM_API = `https://api.telegram.org/bot${config.botToken}`;
+const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
 async function sendMessage(chatId, text, options = {}) {
   try {
@@ -18,15 +22,54 @@ async function sendMessage(chatId, text, options = {}) {
   }
 }
 
-async function sendPhoto(chatId, photo, caption = '') {
-  try {
-    const res = await axios.post(`${TELEGRAM_API}/sendPhoto`, {
-      chat_id: chatId,
-      photo,
-      caption,
-      parse_mode: 'HTML',
+/**
+ * Преобразует URL медиа в локальный путь к файлу (если файл хранится на нашем сервере).
+ * /api/uploads/quests/abc.jpg → /path/to/uploads/quests/abc.jpg
+ * https://nayriz.shop/api/uploads/quests/abc.jpg → /path/to/uploads/quests/abc.jpg
+ */
+function resolveLocalPath(url) {
+  if (!url) return null;
+  const marker = '/api/uploads/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  const relative = url.substring(idx + marker.length);
+  const filePath = path.join(UPLOADS_DIR, relative);
+  return fs.existsSync(filePath) ? filePath : null;
+}
+
+async function sendMediaFile(chatId, method, fieldName, fileOrUrl, caption = '') {
+  const localPath = resolveLocalPath(fileOrUrl);
+
+  if (localPath) {
+    // Отправляем файл напрямую с диска
+    const form = new FormData();
+    form.append('chat_id', String(chatId));
+    form.append(fieldName, fs.createReadStream(localPath));
+    if (caption) {
+      form.append('caption', caption);
+      form.append('parse_mode', 'HTML');
+    }
+    const res = await axios.post(`${TELEGRAM_API}/${method}`, form, {
+      headers: form.getHeaders(),
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
     });
     return res.data;
+  }
+
+  // Внешний URL — передаём как есть
+  const res = await axios.post(`${TELEGRAM_API}/${method}`, {
+    chat_id: chatId,
+    [fieldName]: fileOrUrl,
+    caption,
+    parse_mode: 'HTML',
+  });
+  return res.data;
+}
+
+async function sendPhoto(chatId, photo, caption = '') {
+  try {
+    return await sendMediaFile(chatId, 'sendPhoto', 'photo', photo, caption);
   } catch (err) {
     console.error('Telegram sendPhoto error:', err.response?.data || err.message);
     throw err;
@@ -35,13 +78,7 @@ async function sendPhoto(chatId, photo, caption = '') {
 
 async function sendVideo(chatId, video, caption = '') {
   try {
-    const res = await axios.post(`${TELEGRAM_API}/sendVideo`, {
-      chat_id: chatId,
-      video,
-      caption,
-      parse_mode: 'HTML',
-    });
-    return res.data;
+    return await sendMediaFile(chatId, 'sendVideo', 'video', video, caption);
   } catch (err) {
     console.error('Telegram sendVideo error:', err.response?.data || err.message);
     throw err;

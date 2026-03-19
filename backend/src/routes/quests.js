@@ -54,7 +54,10 @@ async function normalizeClue(clue, order) {
     order,
     text: clue.text,
     task_text: clue.task_text || '',
-    answers: clue.answers || [],
+    answers: (clue.answers || [])
+      .flatMap((a) => a.split(','))
+      .map((a) => a.trim())
+      .filter(Boolean),
     radius_meters: Number(clue.radius_meters || 100),
     photo_required: clue.photo_required !== false,
   };
