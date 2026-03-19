@@ -1,37 +1,37 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
-const { Quest } = require('../models');
-const { geocodeAddress } = require('../services/geocoding');
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const multer = require("multer");
+const { Quest } = require("../models");
+const { geocodeAddress } = require("../services/geocoding");
 
 const router = express.Router();
 
-const uploadDir = path.join(__dirname, '../../uploads/quests');
+const uploadDir = path.join(__dirname, "../../uploads/quests");
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
+    const ext = path.extname(file.originalname || "").toLowerCase();
     cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 999 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+    if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
       cb(null, true);
       return;
     }
-    cb(new Error('Допустимы только image/video файлы'));
+    cb(new Error("Допустимы только image/video файлы"));
   },
 });
 
 function parseNumber(value) {
-  if (value === null || value === undefined || value === '') return null;
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -39,13 +39,13 @@ function parseNumber(value) {
 function validateCoordinates(lat, lng) {
   if (lat === null && lng === null) return;
   if (lat === null || lng === null) {
-    throw new Error('Для координат нужны и lat, и lng');
+    throw new Error("Для координат нужны и lat, и lng");
   }
   if (lat < -90 || lat > 90) {
-    throw new Error('lat должен быть в диапазоне от -90 до 90');
+    throw new Error("lat должен быть в диапазоне от -90 до 90");
   }
   if (lng < -180 || lng > 180) {
-    throw new Error('lng должен быть в диапазоне от -180 до 180');
+    throw new Error("lng должен быть в диапазоне от -180 до 180");
   }
 }
 
@@ -53,9 +53,9 @@ async function normalizeClue(clue, order) {
   const nextClue = {
     order,
     text: clue.text,
-    task_text: clue.task_text || '',
+    task_text: clue.task_text || "",
     answers: (clue.answers || [])
-      .flatMap((a) => a.split(','))
+      .flatMap((a) => a.split(","))
       .map((a) => a.trim())
       .filter(Boolean),
     radius_meters: Number(clue.radius_meters || 100),
@@ -65,11 +65,11 @@ async function normalizeClue(clue, order) {
   // Множественные медиа-файлы
   if (clue.media_files && clue.media_files.length > 0) {
     nextClue.media_files = clue.media_files.map((m) => ({
-      type: m.type || 'image',
-      url: m.url || '',
-      mime: m.mime || '',
+      type: m.type || "image",
+      url: m.url || "",
+      mime: m.mime || "",
       size: Number(m.size || 0),
-      original_name: m.original_name || '',
+      original_name: m.original_name || "",
     }));
   }
 
@@ -80,18 +80,18 @@ async function normalizeClue(clue, order) {
   if (clue.media?.url || clue.media_url) {
     const mediaUrl = clue.media?.url || clue.media_url;
     nextClue.media = {
-      type: clue.media?.type || (mediaUrl.match(/\.(mp4|mov|webm)$/i) ? 'video' : 'image'),
+      type: clue.media?.type || (mediaUrl.match(/\.(mp4|mov|webm)$/i) ? "video" : "image"),
       url: mediaUrl,
-      mime: clue.media?.mime || '',
+      mime: clue.media?.mime || "",
       size: Number(clue.media?.size || 0),
-      original_name: clue.media?.original_name || '',
+      original_name: clue.media?.original_name || "",
     };
     nextClue.media_url = mediaUrl;
   }
 
   const rawLat = parseNumber(clue.location?.lat);
   const rawLng = parseNumber(clue.location?.lng);
-  const rawAddress = (clue.location?.address_text || '').trim();
+  const rawAddress = (clue.location?.address_text || "").trim();
 
   if (rawAddress && (rawLat === null || rawLng === null)) {
     const geocoded = await geocodeAddress(rawAddress);
@@ -126,52 +126,49 @@ async function normalizeClues(clues = []) {
 }
 
 async function ensureSingleActiveQuest(questId) {
-  await Quest.updateMany(
-    { _id: { $ne: questId }, status: 'active' },
-    { $set: { status: 'draft' } }
-  );
+  await Quest.updateMany({ _id: { $ne: questId }, status: "active" }, { $set: { status: "draft" } });
 }
 
 // GET /api/quests
-router.get('/', async (_req, res) => {
+router.get("/", async (_req, res) => {
   try {
     const quests = await Quest.find().sort({ createdAt: -1 });
     res.json(quests);
   } catch (err) {
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
 // GET /api/quests/active/current
-router.get('/active/current', async (_req, res) => {
+router.get("/active/current", async (_req, res) => {
   try {
-    const quest = await Quest.findOne({ status: 'active' }).sort({ updatedAt: -1 });
-    if (!quest) return res.status(404).json({ error: 'Активный квест не найден' });
+    const quest = await Quest.findOne({ status: "active" }).sort({ updatedAt: -1 });
+    if (!quest) return res.status(404).json({ error: "Активный квест не найден" });
     res.json(quest);
   } catch (err) {
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
 // GET /api/quests/:id
-router.get('/:id', async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const quest = await Quest.findById(req.params.id);
-    if (!quest) return res.status(404).json({ error: 'Квест не найден' });
+    if (!quest) return res.status(404).json({ error: "Квест не найден" });
     res.json(quest);
   } catch (err) {
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
 // POST /api/quests/media
-router.post('/media', upload.single('media'), async (req, res) => {
+router.post("/media", upload.single("media"), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Файл обязателен' });
+    if (!req.file) return res.status(400).json({ error: "Файл обязателен" });
 
     const url = `/api/uploads/quests/${req.file.filename}`;
     const media = {
-      type: req.file.mimetype.startsWith('video/') ? 'video' : 'image',
+      type: req.file.mimetype.startsWith("video/") ? "video" : "image",
       url,
       mime: req.file.mimetype,
       size: req.file.size,
@@ -180,22 +177,16 @@ router.post('/media', upload.single('media'), async (req, res) => {
 
     res.status(201).json({ url, media });
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Ошибка загрузки файла' });
+    res.status(500).json({ error: err.message || "Ошибка загрузки файла" });
   }
 });
 
 // POST /api/quests
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      clues,
-      starts_at,
-      status,
-    } = req.body;
+    const { title, description, clues, starts_at, status } = req.body;
 
-    if (!title) return res.status(400).json({ error: 'Название квеста обязательно' });
+    if (!title) return res.status(400).json({ error: "Название квеста обязательно" });
 
     const normalizedClues = await normalizeClues(clues || []);
     const quest = await Quest.create({
@@ -203,10 +194,10 @@ router.post('/', async (req, res) => {
       description,
       clues: normalizedClues,
       starts_at,
-      status: status || 'draft',
+      status: status || "draft",
     });
 
-    if (quest.status === 'active') {
+    if (quest.status === "active") {
       await ensureSingleActiveQuest(quest._id);
     }
 
@@ -215,12 +206,12 @@ router.post('/', async (req, res) => {
     if (err.message) {
       return res.status(400).json({ error: err.message });
     }
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
 // PATCH /api/quests/:id
-router.patch('/:id', async (req, res) => {
+router.patch("/:id", async (req, res) => {
   try {
     const { title, description, status, clues, starts_at } = req.body;
     const update = {};
@@ -232,9 +223,9 @@ router.patch('/:id', async (req, res) => {
     if (clues !== undefined) update.clues = await normalizeClues(clues);
 
     const quest = await Quest.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!quest) return res.status(404).json({ error: 'Квест не найден' });
+    if (!quest) return res.status(404).json({ error: "Квест не найден" });
 
-    if (quest.status === 'active') {
+    if (quest.status === "active") {
       await ensureSingleActiveQuest(quest._id);
     }
 
@@ -243,18 +234,18 @@ router.patch('/:id', async (req, res) => {
     if (err.message) {
       return res.status(400).json({ error: err.message });
     }
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
 // DELETE /api/quests/:id
-router.delete('/:id', async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const quest = await Quest.findByIdAndDelete(req.params.id);
-    if (!quest) return res.status(404).json({ error: 'Квест не найден' });
-    res.json({ message: 'Квест удалён' });
+    if (!quest) return res.status(404).json({ error: "Квест не найден" });
+    res.json({ message: "Квест удалён" });
   } catch (err) {
-    res.status(500).json({ error: 'Ошибка сервера' });
+    res.status(500).json({ error: "Ошибка сервера" });
   }
 });
 
