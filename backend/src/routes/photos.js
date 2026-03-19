@@ -53,14 +53,20 @@ router.patch('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Статус должен быть approved или rejected' });
     }
 
-    const photo = await PhotoReport.findByIdAndUpdate(
-      req.params.id,
+    // Обновляем только если фото ещё на рассмотрении (pending) — защита от повторных кликов
+    const photo = await PhotoReport.findOneAndUpdate(
+      { _id: req.params.id, status: 'pending' },
       { status, admin_comment: admin_comment || '', reviewed_at: new Date() },
       { new: true }
     ).populate('team_id', 'name color current_clue_index')
      .populate('user_id', 'telegram_id telegram_username first_name');
 
-    if (!photo) return res.status(404).json({ error: 'Фото не найдено' });
+    if (!photo) {
+      // Фото не найдено или уже обработано
+      const existing = await PhotoReport.findById(req.params.id);
+      if (existing) return res.json(existing);
+      return res.status(404).json({ error: 'Фото не найдено' });
+    }
 
     const io = req.app.get('io');
 

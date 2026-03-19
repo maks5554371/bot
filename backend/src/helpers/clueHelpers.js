@@ -35,18 +35,26 @@ function getAllClueMedia(clue) {
   return single ? [single] : [];
 }
 
+/**
+ * Отправить медиа участнику. Возвращает file_id из ответа Telegram (для переиспользования).
+ */
 async function sendClueToMember(chatId, clueText, media) {
-  if (media && media.url) {
+  if (media && (media.url || media.file_id)) {
+    const source = media.file_id || media.url;
     if (media.type === 'video') {
       if (clueText) await telegram.sendMessage(chatId, clueText);
       try {
-        await telegram.sendVideo(chatId, media.url);
+        const result = await telegram.sendVideo(chatId, source);
+        return result?.result?.video?.file_id || null;
       } catch (e) {
         console.error(`Failed to send video to ${chatId}:`, e.message);
       }
     } else {
       try {
-        await telegram.sendPhoto(chatId, media.url, clueText || '');
+        const result = await telegram.sendPhoto(chatId, source, clueText || '');
+        // file_id из самого большого размера фото
+        const sizes = result?.result?.photo;
+        return sizes?.length ? sizes[sizes.length - 1].file_id : null;
       } catch (e) {
         console.error(`Failed to send photo to ${chatId}, falling back to text:`, e.message);
         if (clueText) await telegram.sendMessage(chatId, clueText);
@@ -55,6 +63,7 @@ async function sendClueToMember(chatId, clueText, media) {
   } else if (clueText) {
     await telegram.sendMessage(chatId, clueText);
   }
+  return null;
 }
 
 function buildClueText(clue, index, total, prefix = '') {
@@ -73,17 +82,38 @@ async function sendStationToTeam(team, clue, index, total, prefix = '') {
   const clueText = buildClueText(clue, index, total, prefix);
   const mediaList = getAllClueMedia(clue);
 
-  for (const member of team.members) {
-    try {
-      if (mediaList.length === 0) {
+  if (mediaList.length === 0) {
+    // Без медиа — просто текст всем
+    for (const member of team.members) {
+      try {
         await telegram.sendMessage(member.telegram_id, clueText);
-      } else {
-        // Первое медиа отправляем с текстом подсказки
-        await sendClueToMember(member.telegram_id, clueText, mediaList[0]);
-        // Остальные медиа — без текста
-        for (let i = 1; i < mediaList.length; i++) {
-          await sendClueToMember(member.telegram_id, '', mediaList[i]);
-        }
+      } catch (e) {
+        console.error(`Failed to send clue to ${member.telegram_id}:`, e.message);
+      }
+    }
+    return;
+  }
+
+  // Кэш file_id для каждого медиа (индекс → file_id)
+  const fileIdCache = {};
+
+  for (let mi = 0; mi < team.members.length; mi++) {
+    const member = team.members[mi];
+    try {
+      // Первое медиа — с текстом подсказки
+      const firstMedia = fileIdCache[0]
+        ? { file_id: fileIdCache[0], type: mediaList[0].type }
+        : mediaList[0];
+      const firstFileId = await sendClueToMember(member.telegram_id, clueText, firstMedia);
+      if (firstFileId && !fileIdCache[0]) fileIdCache[0] = firstFileId;
+
+      // Остальные медиа — без текста
+      for (let i = 1; i < mediaList.length; i++) {
+        const media = fileIdCache[i]
+          ? { file_id: fileIdCache[i], type: mediaList[i].type }
+          : mediaList[i];
+        const fid = await sendClueToMember(member.telegram_id, '', media);
+        if (fid && !fileIdCache[i]) fileIdCache[i] = fid;
       }
     } catch (e) {
       console.error(`Failed to send clue to ${member.telegram_id}:`, e.message);
