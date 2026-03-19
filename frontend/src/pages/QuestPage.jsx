@@ -28,6 +28,7 @@ export default function QuestPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [locationMode, setLocationMode] = useState('map');
   const [form, setForm] = useState({ title: '', description: '' });
+  const [editingClueIndex, setEditingClueIndex] = useState(null);
   const [clueForm, setClueForm] = useState({
     text: '',
     task_text: '',
@@ -39,6 +40,7 @@ export default function QuestPage() {
     photo_required: true,
     mediaFiles: [],
     mediaPreviews: [],
+    existingMedia: [],
   });
 
   const fetchQuests = async () => {
@@ -86,6 +88,7 @@ export default function QuestPage() {
   };
 
   const resetClueForm = () => {
+    setEditingClueIndex(null);
     setClueForm({
       text: '',
       task_text: '',
@@ -97,10 +100,51 @@ export default function QuestPage() {
       photo_required: true,
       mediaFiles: [],
       mediaPreviews: [],
+      existingMedia: [],
     });
   };
 
-  const addClue = async (e) => {
+  const startEditClue = (index) => {
+    const clue = selected.clues[index];
+    const existing = clue.media_files?.length > 0
+      ? clue.media_files
+      : clue.media?.url ? [clue.media] : clue.media_url ? [{ url: clue.media_url, type: 'image' }] : [];
+
+    setEditingClueIndex(index);
+    setClueForm({
+      text: clue.text || '',
+      task_text: clue.task_text || '',
+      answers: (clue.answers || []).join(', '),
+      lat: clue.location?.lat != null ? String(clue.location.lat) : '',
+      lng: clue.location?.lng != null ? String(clue.location.lng) : '',
+      address_text: clue.location?.address_text || '',
+      radius_meters: clue.radius_meters ?? 100,
+      photo_required: clue.photo_required ?? true,
+      mediaFiles: [],
+      mediaPreviews: [],
+      existingMedia: existing,
+    });
+  };
+
+  const moveClue = async (index, direction) => {
+    if (!selected) return;
+    const clues = [...selected.clues];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= clues.length) return;
+
+    [clues[index], clues[targetIndex]] = [clues[targetIndex], clues[index]];
+    clues.forEach((c, i) => { c.order = i + 1; });
+
+    try {
+      const res = await api.patch(`/quests/${selected._id}`, { clues });
+      setSelected(res.data);
+      await fetchQuests();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const saveClue = async (e) => {
     e.preventDefault();
     if (!selected) return;
 
@@ -111,8 +155,9 @@ export default function QuestPage() {
         .map((a) => a.trim())
         .filter(Boolean);
 
-      const newClue = {
-        order: (selected.clues?.length || 0) + 1,
+      const allMedia = [...clueForm.existingMedia, ...uploadedMediaFiles];
+
+      const clueData = {
         text: clueForm.text,
         task_text: clueForm.task_text || '',
         answers: answersArray,
@@ -125,20 +170,33 @@ export default function QuestPage() {
         photo_required: clueForm.photo_required,
       };
 
-      if (uploadedMediaFiles.length > 0) {
-        newClue.media_files = uploadedMediaFiles;
-        // Legacy fallback — first file as single media
-        newClue.media = uploadedMediaFiles[0];
-        newClue.media_url = uploadedMediaFiles[0].url;
+      if (allMedia.length > 0) {
+        clueData.media_files = allMedia;
+        clueData.media = allMedia[0];
+        clueData.media_url = allMedia[0].url;
+      } else {
+        clueData.media_files = [];
+        clueData.media = { type: null, url: '', mime: '', size: 0, original_name: '' };
+        clueData.media_url = '';
       }
 
-      const clues = [...(selected.clues || []), newClue];
+      let clues;
+      if (editingClueIndex !== null) {
+        clues = [...selected.clues];
+        clues[editingClueIndex] = { ...clues[editingClueIndex], ...clueData };
+      } else {
+        clueData.order = (selected.clues?.length || 0) + 1;
+        clues = [...(selected.clues || []), clueData];
+      }
+
+      clues.forEach((c, i) => { c.order = i + 1; });
+
       const res = await api.patch(`/quests/${selected._id}`, { clues });
       setSelected(res.data);
       resetClueForm();
       await fetchQuests();
     } catch (err) {
-      alert(err.response?.data?.error || 'Ошибка при добавлении подсказки');
+      alert(err.response?.data?.error || 'Ошибка при сохранении станции');
       console.error(err);
     }
   };
@@ -268,9 +326,25 @@ export default function QuestPage() {
 
             <div className="space-y-3 mb-6">
               {(selected.clues || []).map((clue, i) => (
-                <div key={i} className="bg-white rounded-xl shadow p-4 flex items-start gap-4">
-                  <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
-                    {i + 1}
+                <div key={i} className={`bg-white rounded-xl shadow p-4 flex items-start gap-4 ${editingClueIndex === i ? 'ring-2 ring-primary' : ''}`}>
+                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => moveClue(i, -1)}
+                      disabled={i === 0}
+                      className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+                    >
+                      ▲
+                    </button>
+                    <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
+                      {i + 1}
+                    </div>
+                    <button
+                      onClick={() => moveClue(i, 1)}
+                      disabled={i === (selected.clues || []).length - 1}
+                      className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+                    >
+                      ▼
+                    </button>
                   </div>
                   <div className="flex-1">
                     <div className="mb-2">
@@ -319,15 +393,36 @@ export default function QuestPage() {
                       {clue.photo_required && <span>📸 Фото обязательно</span>}
                     </div>
                   </div>
-                  <button onClick={() => removeClue(i)} className="text-red-400 hover:text-red-600">
-                    ✕
-                  </button>
+                  <div className="flex flex-col gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => startEditClue(i)}
+                      className="text-primary hover:text-primary-dark text-sm font-medium"
+                    >
+                      ✏️
+                    </button>
+                    <button onClick={() => removeClue(i)} className="text-red-400 hover:text-red-600 text-sm">
+                      🗑
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <form onSubmit={addClue} className="bg-white rounded-xl shadow p-6 space-y-4">
-              <h3 className="font-semibold text-gray-800">Добавить станцию</h3>
+            <form onSubmit={saveClue} className="bg-white rounded-xl shadow p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-gray-800">
+                  {editingClueIndex !== null ? `Редактировать станцию ${editingClueIndex + 1}` : 'Добавить станцию'}
+                </h3>
+                {editingClueIndex !== null && (
+                  <button
+                    type="button"
+                    onClick={resetClueForm}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Отмена
+                  </button>
+                )}
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">🔍 Подсказка *</label>
@@ -366,6 +461,34 @@ export default function QuestPage() {
 
               <div>
                 <label className="block text-sm text-gray-600 mb-2">Медиа (фото или видео, можно несколько)</label>
+                {clueForm.existingMedia.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-xs text-gray-400 mb-1">Текущие файлы:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {clueForm.existingMedia.map((m, i) => (
+                        <div key={`existing-${i}`} className="relative">
+                          {m.type === 'video' ? (
+                            <video controls src={m.url} className="max-h-28 rounded-lg border" />
+                          ) : (
+                            <img src={m.url} alt={`existing ${i + 1}`} className="max-h-28 rounded-lg border" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClueForm({
+                                ...clueForm,
+                                existingMedia: clueForm.existingMedia.filter((_, j) => j !== i),
+                              });
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <input
                   type="file"
                   accept="image/*,video/*"
@@ -383,7 +506,7 @@ export default function QuestPage() {
                 {clueForm.mediaPreviews.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {clueForm.mediaPreviews.map((p, i) => (
-                      <div key={i} className="relative">
+                      <div key={`new-${i}`} className="relative">
                         {p.type.startsWith('video/') ? (
                           <video controls src={p.url} className="max-h-36 rounded-lg border" />
                         ) : (
@@ -490,7 +613,7 @@ export default function QuestPage() {
               </div>
 
               <button type="submit" className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg text-sm font-medium">
-                Добавить станцию
+                {editingClueIndex !== null ? 'Сохранить изменения' : 'Добавить станцию'}
               </button>
             </form>
           </div>

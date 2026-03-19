@@ -53,9 +53,22 @@ async function normalizeClue(clue, order) {
   const nextClue = {
     order,
     text: clue.text,
+    task_text: clue.task_text || '',
+    answers: clue.answers || [],
     radius_meters: Number(clue.radius_meters || 100),
     photo_required: clue.photo_required !== false,
   };
+
+  // Множественные медиа-файлы
+  if (clue.media_files && clue.media_files.length > 0) {
+    nextClue.media_files = clue.media_files.map((m) => ({
+      type: m.type || 'image',
+      url: m.url || '',
+      mime: m.mime || '',
+      size: Number(m.size || 0),
+      original_name: m.original_name || '',
+    }));
+  }
 
   if (clue.media_url) {
     nextClue.media_url = clue.media_url;

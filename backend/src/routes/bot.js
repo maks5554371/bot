@@ -183,24 +183,9 @@ router.post('/check-answer', async (req, res) => {
 
       const nextClue = quest.clues[nextIndex];
 
-      // Отправляем поздравление + локацию следующей станции
-      for (const member of team.members) {
-        try {
-          await telegram.sendMessage(member.telegram_id, '✅ <b>Правильный ответ!</b> Двигайтесь к следующей станции!');
-          if (nextClue.location?.lat && nextClue.location?.lng) {
-            if (nextClue.location.address_text) {
-              await telegram.sendMessage(member.telegram_id, `📍 <b>Адрес:</b> ${nextClue.location.address_text}`);
-            }
-            await telegram.sendLocation(member.telegram_id, nextClue.location.lat, nextClue.location.lng);
-          }
-        } catch (e) {
-          console.error(`Failed to send to ${member.telegram_id}:`, e.message);
-        }
-      }
-
-      // Отправляем подсказку + задание следующей станции
+      // Отправляем поздравление + следующую станцию (подсказка + медиа)
       const { sendStationToTeam } = require('../helpers/clueHelpers');
-      await sendStationToTeam(team, nextClue, nextIndex, quest.clues.length);
+      await sendStationToTeam(team, nextClue, nextIndex, quest.clues.length, '✅ <b>Правильный ответ!</b>\n\n');
 
       if (io) io.emit('clue_approved', { team_id: team._id, clue_index: nextIndex });
       return res.json({ matched: true, correct: true, next_index: nextIndex });
