@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 
+const mediaItemSchema = new mongoose.Schema({
+  type: { type: String, enum: ['image', 'video'], default: 'image' },
+  url: { type: String, default: '' },
+  mime: { type: String, default: '' },
+  size: { type: Number, default: 0 },
+  original_name: { type: String, default: '' },
+}, { _id: false });
+
 const clueSchema = new mongoose.Schema({
   order: { type: Number, required: true },
   text: { type: String, required: true },
@@ -17,6 +25,7 @@ const clueSchema = new mongoose.Schema({
     size: { type: Number, default: 0 },
     original_name: { type: String, default: '' },
   },
+  media_files: [mediaItemSchema],
   location: {
     lat: { type: Number, default: null },
     lng: { type: Number, default: null },

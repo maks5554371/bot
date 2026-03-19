@@ -21,10 +21,24 @@ function getClueMedia(clue) {
   return null;
 }
 
+/**
+ * Получить все медиа-файлы из подсказки (новый массив + legacy fallback).
+ */
+function getAllClueMedia(clue) {
+  if (clue.media_files && clue.media_files.length > 0) {
+    return clue.media_files.map((m) => ({
+      url: getFullMediaUrl(m.url),
+      type: m.type || 'image',
+    }));
+  }
+  const single = getClueMedia(clue);
+  return single ? [single] : [];
+}
+
 async function sendClueToMember(chatId, clueText, media) {
   if (media && media.url) {
     if (media.type === 'video') {
-      await telegram.sendMessage(chatId, clueText);
+      if (clueText) await telegram.sendMessage(chatId, clueText);
       try {
         await telegram.sendVideo(chatId, media.url);
       } catch (e) {
@@ -32,13 +46,13 @@ async function sendClueToMember(chatId, clueText, media) {
       }
     } else {
       try {
-        await telegram.sendPhoto(chatId, media.url, clueText);
+        await telegram.sendPhoto(chatId, media.url, clueText || '');
       } catch (e) {
         console.error(`Failed to send photo to ${chatId}, falling back to text:`, e.message);
-        await telegram.sendMessage(chatId, clueText);
+        if (clueText) await telegram.sendMessage(chatId, clueText);
       }
     }
-  } else {
+  } else if (clueText) {
     await telegram.sendMessage(chatId, clueText);
   }
 }
@@ -57,15 +71,24 @@ function buildClueText(clue, index, total, prefix = '') {
 
 async function sendStationToTeam(team, clue, index, total, prefix = '') {
   const clueText = buildClueText(clue, index, total, prefix);
-  const media = getClueMedia(clue);
+  const mediaList = getAllClueMedia(clue);
 
   for (const member of team.members) {
     try {
-      await sendClueToMember(member.telegram_id, clueText, media);
+      if (mediaList.length === 0) {
+        await telegram.sendMessage(member.telegram_id, clueText);
+      } else {
+        // Первое медиа отправляем с текстом подсказки
+        await sendClueToMember(member.telegram_id, clueText, mediaList[0]);
+        // Остальные медиа — без текста
+        for (let i = 1; i < mediaList.length; i++) {
+          await sendClueToMember(member.telegram_id, '', mediaList[i]);
+        }
+      }
     } catch (e) {
       console.error(`Failed to send clue to ${member.telegram_id}:`, e.message);
     }
   }
 }
 
-module.exports = { getFullMediaUrl, getClueMedia, sendClueToMember, buildClueText, sendStationToTeam };
+module.exports = { getFullMediaUrl, getClueMedia, getAllClueMedia, sendClueToMember, buildClueText, sendStationToTeam };

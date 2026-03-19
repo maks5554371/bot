@@ -37,8 +37,8 @@ export default function QuestPage() {
     address_text: '',
     radius_meters: 100,
     photo_required: true,
-    mediaFile: null,
-    mediaPreview: '',
+    mediaFiles: [],
+    mediaPreviews: [],
   });
 
   const fetchQuests = async () => {
@@ -70,17 +70,19 @@ export default function QuestPage() {
     }
   };
 
-  const uploadMedia = async () => {
-    if (!clueForm.mediaFile) return null;
+  const uploadMediaFiles = async () => {
+    if (clueForm.mediaFiles.length === 0) return [];
 
-    const data = new FormData();
-    data.append('media', clueForm.mediaFile);
-
-    const res = await api.post('/quests/media', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-
-    return res.data.media;
+    const results = [];
+    for (const file of clueForm.mediaFiles) {
+      const data = new FormData();
+      data.append('media', file);
+      const res = await api.post('/quests/media', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      results.push(res.data.media);
+    }
+    return results;
   };
 
   const resetClueForm = () => {
@@ -93,8 +95,8 @@ export default function QuestPage() {
       address_text: '',
       radius_meters: 100,
       photo_required: true,
-      mediaFile: null,
-      mediaPreview: '',
+      mediaFiles: [],
+      mediaPreviews: [],
     });
   };
 
@@ -103,7 +105,7 @@ export default function QuestPage() {
     if (!selected) return;
 
     try {
-      const uploadedMedia = await uploadMedia();
+      const uploadedMediaFiles = await uploadMediaFiles();
       const answersArray = clueForm.answers
         .split(',')
         .map((a) => a.trim())
@@ -123,9 +125,11 @@ export default function QuestPage() {
         photo_required: clueForm.photo_required,
       };
 
-      if (uploadedMedia) {
-        newClue.media = uploadedMedia;
-        newClue.media_url = uploadedMedia.url;
+      if (uploadedMediaFiles.length > 0) {
+        newClue.media_files = uploadedMediaFiles;
+        // Legacy fallback — first file as single media
+        newClue.media = uploadedMediaFiles[0];
+        newClue.media_url = uploadedMediaFiles[0].url;
       }
 
       const clues = [...(selected.clues || []), newClue];
@@ -289,7 +293,17 @@ export default function QuestPage() {
                         ))}
                       </div>
                     )}
-                    {(clue.media?.url || clue.media_url) && (
+                    {clue.media_files && clue.media_files.length > 0 ? (
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        {clue.media_files.map((m, mi) => (
+                          m.type === 'video' ? (
+                            <video key={mi} controls className="max-h-36 rounded-lg border" src={m.url} />
+                          ) : (
+                            <img key={mi} className="max-h-36 rounded-lg border" src={m.url} alt={`media ${mi + 1}`} />
+                          )
+                        ))}
+                      </div>
+                    ) : (clue.media?.url || clue.media_url) ? (
                       <div className="mb-2">
                         {clue.media?.type === 'video' ? (
                           <video controls className="max-h-48 rounded-lg border" src={clue.media.url || clue.media_url} />
@@ -297,7 +311,7 @@ export default function QuestPage() {
                           <img className="max-h-48 rounded-lg border" src={clue.media?.url || clue.media_url} alt="media" />
                         )}
                       </div>
-                    )}
+                    ) : null}
                     <div className="flex gap-4 mt-2 text-xs text-gray-500 flex-wrap">
                       {clue.location?.lat && <span>📍 {clue.location.lat.toFixed(4)}, {clue.location.lng.toFixed(4)}</span>}
                       {clue.location?.address_text && <span>🏠 {clue.location.address_text}</span>}
@@ -351,27 +365,43 @@ export default function QuestPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 mb-2">Медиа (фото или видео)</label>
+                <label className="block text-sm text-gray-600 mb-2">Медиа (фото или видео, можно несколько)</label>
                 <input
                   type="file"
                   accept="image/*,video/*"
+                  multiple
                   onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
+                    const files = Array.from(e.target.files || []);
                     setClueForm({
                       ...clueForm,
-                      mediaFile: file,
-                      mediaPreview: file ? URL.createObjectURL(file) : '',
+                      mediaFiles: files,
+                      mediaPreviews: files.map((f) => ({ url: URL.createObjectURL(f), type: f.type })),
                     });
                   }}
                   className="block w-full text-sm text-gray-600"
                 />
-                {clueForm.mediaPreview && (
-                  <div className="mt-2">
-                    {clueForm.mediaFile?.type?.startsWith('video/') ? (
-                      <video controls src={clueForm.mediaPreview} className="max-h-48 rounded-lg border" />
-                    ) : (
-                      <img src={clueForm.mediaPreview} alt="preview" className="max-h-48 rounded-lg border" />
-                    )}
+                {clueForm.mediaPreviews.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {clueForm.mediaPreviews.map((p, i) => (
+                      <div key={i} className="relative">
+                        {p.type.startsWith('video/') ? (
+                          <video controls src={p.url} className="max-h-36 rounded-lg border" />
+                        ) : (
+                          <img src={p.url} alt={`preview ${i + 1}`} className="max-h-36 rounded-lg border" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newFiles = clueForm.mediaFiles.filter((_, j) => j !== i);
+                            const newPreviews = clueForm.mediaPreviews.filter((_, j) => j !== i);
+                            setClueForm({ ...clueForm, mediaFiles: newFiles, mediaPreviews: newPreviews });
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
