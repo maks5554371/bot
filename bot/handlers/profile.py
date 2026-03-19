@@ -26,9 +26,8 @@ async def show_profile(message: Message):
     team_name = user.get('team_id', {}).get('name', 'Без команды') if isinstance(user.get('team_id'), dict) else 'Без команды'
     stats = user.get('stats', {})
 
-    # Формируем жизни визуально
     lives = user.get('lives', 0)
-    lives_display = '❤️' * lives + '🖤' * max(0, 3 - lives)
+    lives_display = '❤️' * lives + '🖤' * max(0, 1 - lives)
 
     text = (
         f"👤 <b>Профиль</b>\n"
@@ -36,6 +35,18 @@ async def show_profile(message: Message):
         f"📛 <b>{user.get('first_name', 'Без имени')}</b>\n"
         f"🚗 Команда: <b>{team_name}</b>\n\n"
         f"❤️ Жизни: {lives_display} ({lives})\n\n"
+    )
+
+    # Список участников команды
+    teammates = user.get('teammates', [])
+    if teammates:
+        text += "👥 <b>Твоя команда:</b>\n"
+        for t in teammates:
+            name = t.get('first_name') or t.get('telegram_username') or '???'
+            text += f"  • {name}\n"
+        text += "\n"
+
+    text += (
         f"📊 <b>Статистика:</b>\n"
         f"  📸 Фото отправлено: {stats.get('photos_sent', 0)}\n"
         f"  💬 Сообщений: {stats.get('messages_sent', 0)}\n"

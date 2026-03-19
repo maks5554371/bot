@@ -52,7 +52,7 @@ export default function UsersPage() {
     setEditingUser(user._id);
     setEditForm({
       first_name: user.first_name || '',
-      lives: user.lives ?? 3,
+      lives: user.lives ?? 1,
       level: user.level ?? 1,
     });
   };

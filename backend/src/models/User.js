@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
     updated_at: { type: Date, default: null },
   },
   // --- Profile ---
-  lives: { type: Number, default: 3 },
+  lives: { type: Number, default: 1 },
   level: { type: Number, default: 1 },
   inventory: [{
     name: { type: String },

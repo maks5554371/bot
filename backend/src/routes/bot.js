@@ -2,6 +2,7 @@ const express = require('express');
 const { User, PhotoReport, Team, Quest, Song, Voting, Vote } = require('../models');
 const config = require('../config');
 const spotify = require('../services/spotify');
+const telegram = require('../services/telegram');
 
 const router = express.Router();
 
@@ -139,6 +140,88 @@ router.post('/message', async (req, res) => {
   }
 });
 
+// POST /api/bot/check-answer — проверка ответа участника на задание квеста
+router.post('/check-answer', async (req, res) => {
+  try {
+    const { telegram_id, answer } = req.body;
+    if (!telegram_id || !answer) {
+      return res.json({ matched: false });
+    }
+
+    const user = await User.findOne({ telegram_id: Number(telegram_id) });
+    if (!user || !user.team_id) return res.json({ matched: false });
+
+    const team = await Team.findById(user.team_id).populate('members', 'telegram_id');
+    if (!team) return res.json({ matched: false });
+
+    const quest = await Quest.findOne({ status: 'active' }).sort({ updatedAt: -1 });
+    if (!quest) return res.json({ matched: false });
+
+    const clueIndex = team.current_clue_index;
+    if (clueIndex >= quest.clues.length) return res.json({ matched: false });
+
+    const clue = quest.clues[clueIndex];
+    if (!clue.answers || clue.answers.length === 0) {
+      return res.json({ matched: false });
+    }
+
+    // Проверка ответа (регистронезависимо)
+    const normalized = answer.trim().toLowerCase();
+    const isCorrect = clue.answers.some((a) => a.trim().toLowerCase() === normalized);
+
+    if (!isCorrect) {
+      return res.json({ matched: true, correct: false });
+    }
+
+    // Правильный ответ — продвигаем команду
+    const nextIndex = clueIndex + 1;
+    const io = req.app.get('io');
+
+    if (nextIndex < quest.clues.length) {
+      team.current_clue_index = nextIndex;
+      await team.save();
+
+      const nextClue = quest.clues[nextIndex];
+
+      // Отправляем поздравление + локацию следующей станции
+      for (const member of team.members) {
+        try {
+          await telegram.sendMessage(member.telegram_id, '✅ <b>Правильный ответ!</b> Двигайтесь к следующей станции!');
+          if (nextClue.location?.lat && nextClue.location?.lng) {
+            if (nextClue.location.address_text) {
+              await telegram.sendMessage(member.telegram_id, `📍 <b>Адрес:</b> ${nextClue.location.address_text}`);
+            }
+            await telegram.sendLocation(member.telegram_id, nextClue.location.lat, nextClue.location.lng);
+          }
+        } catch (e) {
+          console.error(`Failed to send to ${member.telegram_id}:`, e.message);
+        }
+      }
+
+      // Отправляем подсказку + задание следующей станции
+      const { sendStationToTeam } = require('../helpers/clueHelpers');
+      await sendStationToTeam(team, nextClue, nextIndex, quest.clues.length);
+
+      if (io) io.emit('clue_approved', { team_id: team._id, clue_index: nextIndex });
+      return res.json({ matched: true, correct: true, next_index: nextIndex });
+    } else {
+      // Квест завершён
+      for (const member of team.members) {
+        try {
+          await telegram.sendMessage(member.telegram_id, '🎉 <b>Поздравляем! Вы прошли все станции квеста!</b>');
+        } catch (e) {
+          console.error(`Failed to send finish to ${member.telegram_id}:`, e.message);
+        }
+      }
+      if (io) io.emit('team_finished', { team_id: team._id });
+      return res.json({ matched: true, correct: true, finished: true });
+    }
+  } catch (err) {
+    console.error('Bot check-answer error:', err);
+    res.json({ matched: false });
+  }
+});
+
 // POST /api/bot/song/search — поиск песни на Spotify (без добавления)
 router.post('/song/search', async (req, res) => {
   try {
@@ -239,7 +322,19 @@ router.get('/profile', async (req, res) => {
       .populate('team_id', 'name color');
     if (!user) return res.status(404).json({ error: 'Участник не найден' });
 
-    res.json(user);
+    const result = user.toObject();
+
+    // Добавить список участников команды
+    if (user.team_id) {
+      const teammates = await User.find({
+        team_id: user.team_id._id,
+        _id: { $ne: user._id },
+        is_active: true,
+      }).select('first_name telegram_username');
+      result.teammates = teammates;
+    }
+
+    res.json(result);
   } catch (err) {
     console.error('Bot profile error:', err);
     res.status(500).json({ error: 'Ошибка сервера' });

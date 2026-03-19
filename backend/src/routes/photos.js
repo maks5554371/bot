@@ -3,6 +3,7 @@ const axios = require('axios');
 const { PhotoReport, Team, Quest } = require('../models');
 const telegram = require('../services/telegram');
 const config = require('../config');
+const { sendStationToTeam } = require('../helpers/clueHelpers');
 
 const router = express.Router();
 
@@ -74,20 +75,7 @@ router.patch('/:id', async (req, res) => {
             team.current_clue_index = nextIndex;
             await team.save();
 
-            const clue = quest.clues[nextIndex];
-            const clueText = `🔍 <b>Подсказка ${nextIndex + 1}/${quest.clues.length}</b>\n\n${clue.text}${clue.media_url ? `\n\n🎬 Медиа: ${clue.media_url}` : ''}`;
-
-            // Отправить подсказку всем участникам команды
-            for (const member of team.members) {
-              try {
-                await telegram.sendMessage(member.telegram_id, clueText);
-                if (clue.location && clue.location.lat && clue.location.lng) {
-                  await telegram.sendLocation(member.telegram_id, clue.location.lat, clue.location.lng);
-                }
-              } catch (e) {
-                console.error(`Failed to send clue to ${member.telegram_id}:`, e.message);
-              }
-            }
+            await sendStationToTeam(team, quest.clues[nextIndex], nextIndex, quest.clues.length);
 
             if (io) io.emit('clue_approved', { team_id: team._id, clue_index: nextIndex });
           } else {

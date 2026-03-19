@@ -61,6 +61,21 @@ async def handle_text_message(message: Message):
     if _is_button_text(text):
         return
 
+    # Проверяем, может это ответ на задание квеста
+    answer_result = await api_post('check-answer', {
+        'telegram_id': message.from_user.id,
+        'answer': text,
+    })
+
+    if answer_result.get('matched'):
+        if answer_result.get('correct'):
+            # Ответ правильный — бэкенд уже отправил следующую станцию
+            return
+        else:
+            # Ответ неправильный — сообщаем и НЕ пересылаем организатору
+            await message.answer("❌ Неправильный ответ. Попробуй ещё раз!")
+            return
+
     # Пересылка текстового сообщения организатору
     result = await api_post('message', {
         'telegram_id': message.from_user.id,

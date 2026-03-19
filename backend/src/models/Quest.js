@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const clueSchema = new mongoose.Schema({
   order: { type: Number, required: true },
   text: { type: String, required: true },
+  task_text: { type: String, default: '' },
+  answers: [{ type: String }],
   media_url: { type: String, default: '' },
   media: {
     type: {

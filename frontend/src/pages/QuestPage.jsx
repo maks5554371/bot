@@ -30,6 +30,8 @@ export default function QuestPage() {
   const [form, setForm] = useState({ title: '', description: '' });
   const [clueForm, setClueForm] = useState({
     text: '',
+    task_text: '',
+    answers: '',
     lat: '',
     lng: '',
     address_text: '',
@@ -84,6 +86,8 @@ export default function QuestPage() {
   const resetClueForm = () => {
     setClueForm({
       text: '',
+      task_text: '',
+      answers: '',
       lat: '',
       lng: '',
       address_text: '',
@@ -100,9 +104,16 @@ export default function QuestPage() {
 
     try {
       const uploadedMedia = await uploadMedia();
+      const answersArray = clueForm.answers
+        .split(',')
+        .map((a) => a.trim())
+        .filter(Boolean);
+
       const newClue = {
         order: (selected.clues?.length || 0) + 1,
         text: clueForm.text,
+        task_text: clueForm.task_text || '',
+        answers: answersArray,
         location: {
           lat: clueForm.lat ? parseFloat(clueForm.lat) : null,
           lng: clueForm.lng ? parseFloat(clueForm.lng) : null,
@@ -212,7 +223,7 @@ export default function QuestPage() {
             >
               <p className="font-medium text-sm">{q.title}</p>
               <p className={`text-xs mt-1 ${selected?._id === q._id ? 'text-indigo-200' : 'text-gray-500'}`}>
-                {q.clues?.length || 0} подсказок • {q.status}
+                {q.clues?.length || 0} станций • {q.status}
               </p>
             </button>
           ))}
@@ -258,7 +269,26 @@ export default function QuestPage() {
                     {i + 1}
                   </div>
                   <div className="flex-1">
-                    <p className="text-gray-800 mb-2">{clue.text}</p>
+                    <div className="mb-2">
+                      <span className="text-xs font-medium text-primary uppercase">Подсказка</span>
+                      <p className="text-gray-800">{clue.text}</p>
+                    </div>
+                    {clue.task_text && (
+                      <div className="mb-2 bg-amber-50 rounded-lg p-2">
+                        <span className="text-xs font-medium text-amber-600 uppercase">Задание</span>
+                        <p className="text-gray-700 text-sm">{clue.task_text}</p>
+                      </div>
+                    )}
+                    {clue.answers && clue.answers.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-1">
+                        <span className="text-xs text-gray-500">Ответы:</span>
+                        {clue.answers.map((a, j) => (
+                          <span key={j} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded">
+                            {a}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {(clue.media?.url || clue.media_url) && (
                       <div className="mb-2">
                         {clue.media?.type === 'video' ? (
@@ -283,15 +313,42 @@ export default function QuestPage() {
             </div>
 
             <form onSubmit={addClue} className="bg-white rounded-xl shadow p-6 space-y-4">
-              <h3 className="font-semibold text-gray-800">Добавить подсказку</h3>
-              <textarea
-                placeholder="Текст подсказки *"
-                value={clueForm.text}
-                onChange={(e) => setClueForm({ ...clueForm, text: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
-                rows={3}
-                required
-              />
+              <h3 className="font-semibold text-gray-800">Добавить станцию</h3>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">🔍 Подсказка *</label>
+                <textarea
+                  placeholder="Загадка или описание, которое поможет найти место"
+                  value={clueForm.text}
+                  onChange={(e) => setClueForm({ ...clueForm, text: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                  rows={3}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">📋 Задание</label>
+                <textarea
+                  placeholder="Что нужно сделать на этой станции (найди и сфотографируйся...)"
+                  value={clueForm.task_text}
+                  onChange={(e) => setClueForm({ ...clueForm, task_text: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">✅ Правильные ответы</label>
+                <input
+                  type="text"
+                  placeholder="Через запятую: красная площадь, red square"
+                  value={clueForm.answers}
+                  onChange={(e) => setClueForm({ ...clueForm, answers: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">Если участник пришлёт правильный ответ — автоматически получит адрес следующей станции</p>
+              </div>
 
               <div>
                 <label className="block text-sm text-gray-600 mb-2">Медиа (фото или видео)</label>
@@ -403,7 +460,7 @@ export default function QuestPage() {
               </div>
 
               <button type="submit" className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg text-sm font-medium">
-                Добавить подсказку
+                Добавить станцию
               </button>
             </form>
           </div>
