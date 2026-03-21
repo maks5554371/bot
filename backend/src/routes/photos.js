@@ -70,6 +70,21 @@ router.patch('/:id', async (req, res) => {
 
     const io = req.app.get('io');
 
+    // Если отклонено — уведомить команду
+    if (status === 'rejected' && photo.team_id) {
+      const team = await Team.findById(photo.team_id._id).populate('members', 'telegram_id');
+      if (team) {
+        const comment = admin_comment ? `\n💬 <i>${admin_comment}</i>` : '';
+        for (const member of team.members) {
+          try {
+            await telegram.sendMessage(member.telegram_id, `❌ <b>Фото отклонено.</b> Попробуйте ещё раз!${comment}`);
+          } catch (e) {
+            console.error(`Failed to send rejection to ${member.telegram_id}:`, e.message);
+          }
+        }
+      }
+    }
+
     // Если аппрувнуто — продвинуть команду к следующей подсказке
     if (status === 'approved' && photo.team_id) {
       const team = await Team.findById(photo.team_id._id).populate('members', 'telegram_id');
