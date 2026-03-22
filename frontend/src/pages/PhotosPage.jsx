@@ -56,12 +56,43 @@ export default function PhotosPage() {
     }
   };
 
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadZip = async () => {
+    setDownloading(true);
+    try {
+      const params = {};
+      if (filter) params.status = filter;
+      if (teamFilter) params.team_id = teamFilter;
+      const res = await api.get('/photos/download/zip', { params, responseType: 'blob' });
+      const url = window.URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `photos-${Date.now()}.zip`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.response?.status === 404 ? 'Нет фото для скачивания' : 'Ошибка при скачивании');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) return <div className="text-center py-12 text-gray-500">Загрузка...</div>;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Фото-отчёты</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-800">Фото-отчёты</h1>
+          <button
+            onClick={downloadZip}
+            disabled={downloading}
+            className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            {downloading ? '⏳ Скачивание...' : '📥 Скачать ZIP'}
+          </button>
+        </div>
         <div className="flex gap-2">
           {['pending', 'approved', 'rejected', ''].map((f) => (
             <button

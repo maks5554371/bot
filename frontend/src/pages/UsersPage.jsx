@@ -129,7 +129,7 @@ export default function UsersPage() {
                     </select>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-red-500 font-bold">{'❤️'.repeat(Math.min(user.lives ?? 3, 5))}</span>
+                    <span className="text-red-500 font-bold">{'❤️'.repeat(Math.max(0, Math.min(user.lives ?? 1, 5)))}</span>
                     <span className="text-gray-400 ml-1 text-sm">({user.lives ?? 3})</span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{user.level ?? 1}</td>
@@ -187,7 +187,7 @@ export default function UsersPage() {
               <div className="border-t pt-3 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">❤️ Жизни</span>
-                  <span className="font-medium">{'❤️'.repeat(Math.min(user.lives ?? 3, 5))} ({user.lives ?? 3})</span>
+                  <span className="font-medium">{'❤️'.repeat(Math.max(0, Math.min(user.lives ?? 1, 5)))} ({user.lives ?? 3})</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">⭐️ Уровень</span>
@@ -265,7 +265,8 @@ export default function UsersPage() {
                 <input
                   type="number"
                   value={editForm.lives}
-                  onChange={(e) => setEditForm({ ...editForm, lives: parseInt(e.target.value) || 0 })}
+                  min="0"
+                  onChange={(e) => setEditForm({ ...editForm, lives: Math.max(0, parseInt(e.target.value) || 0) })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-1 focus:ring-2 focus:ring-primary outline-none"
                 />
               </div>

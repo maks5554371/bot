@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const archiver = require('archiver');
 const { PhotoReport, Team, Quest } = require('../models');
 const telegram = require('../services/telegram');
 const config = require('../config');
@@ -25,6 +26,54 @@ router.get('/', async (req, res) => {
     res.json(photos);
   } catch (err) {
     res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// GET /api/photos/download/zip — скачать все фото архивом
+router.get('/download/zip', async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.team_id) filter.team_id = req.query.team_id;
+
+    const photos = await PhotoReport.find(filter)
+      .populate('team_id', 'name')
+      .populate('user_id', 'first_name telegram_username')
+      .sort({ submitted_at: 1 });
+
+    if (photos.length === 0) {
+      return res.status(404).json({ error: 'Нет фото для скачивания' });
+    }
+
+    res.set('Content-Type', 'application/zip');
+    res.set('Content-Disposition', `attachment; filename="photos-${Date.now()}.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 5 } });
+    archive.pipe(res);
+
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      try {
+        const fileUrl = await telegram.getFileUrl(photo.telegram_file_id);
+        const response = await axios.get(fileUrl, { responseType: 'stream' });
+
+        const teamName = (photo.team_id?.name || 'no-team').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_');
+        const userName = (photo.user_id?.first_name || photo.user_id?.telegram_username || 'anon').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_');
+        const ext = (response.headers['content-type'] || '').includes('png') ? 'png' : 'jpg';
+        const filename = `${teamName}/${userName}_station${photo.clue_index + 1}_${i + 1}.${ext}`;
+
+        archive.append(response.data, { name: filename });
+      } catch (e) {
+        console.error(`Failed to download photo ${photo._id}:`, e.message);
+      }
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    console.error('Error creating photos zip:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Ошибка при создании архива' });
+    }
   }
 });
 
